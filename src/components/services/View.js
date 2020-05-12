@@ -15,7 +15,7 @@ const ServiceView = (props) => {
   const [selectedService, setSelectedService] = useState([]);
   const [deleteModalShow, setDeleteModalShow] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState([]);
-  const [processing, setProcessing] = useState(null);
+  const [processing, setProcessing] = useState("");
 
   const findNumberOfSelectService = () => {
     let num = 0;
@@ -55,19 +55,19 @@ const ServiceView = (props) => {
     }
   };
 
-  const handleServiceUndeploy = () => {
+  const handleServiceAction = async (action) => {
+    setProcessing(action);
     for (const ele of selectedService) {
       const type = ele.type;
       for (const service of ele.payload[`${type}:${type}`]) {
-        NSO_API.delete(`/restconf/data/${type}:${type}=${service["service-id"]}`).then((response) => {
-          console.log("delete service: ", service["service-id"]);
-          setDeleteProgress((deleteProgress) => [...deleteProgress, service["service-id"]]);
-        });
+        await NSO_API.post(`/restconf/data/${type}:${type}=${service["service-id"]}/${action}`);
+        console.log(`${action} service: `, service["service-id"]);
       }
-      BACKEND.delete(`/services/${type}/${ele.name}`).then((response) => {
-        console.log("delete service: ", ele.name);
-      });
+      await BACKEND.patch(`/services/${type}/${ele.name}`, { changeStatusTo: action === "re-deploy" ? "active" : action });
+      console.log(`${action} service: `, ele.name);
     }
+    setProcessing(null);
+    fetchServices();
   };
 
   const fetchServices = async (e) => {
@@ -85,7 +85,7 @@ const ServiceView = (props) => {
           </td>
           <td>
             {" "}
-            <Badge variant="primary">{ele.status}</Badge>
+            <Badge variant={ele.status === "active" ? "primary" : "secondary"}>{ele.status}</Badge>
           </td>
           <td>{ele.name}</td>
           <td>{ele.scale === 1 ? ele.st_vlan : `${ele.st_vlan}-${parseInt(ele.st_vlan) + parseInt(ele.scale) - 1}`}</td>
@@ -117,18 +117,30 @@ const ServiceView = (props) => {
             <i className="fas fa-plus" />
             {"   "}new
           </Link>
-          <button
-            className={"bg-blue btn btn-primary btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
-            onClick={() => console.log("click")}
-          >
-            {"   "}Re-deploy
-          </button>
-          <button
-            className={"bg-blue btn btn-primary btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
-            onClick={handleServiceUndeploy}
-          >
-            {"   "}Un-deploy
-          </button>
+          {processing === "re-deploy" ? (
+            <button className="bg-blue btn btn-primary btn-sm float-right disabled">
+              <Spinner animation="border" as="span" size="sm" />
+            </button>
+          ) : (
+            <button
+              className={"bg-blue btn btn-primary btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
+              onClick={() => handleServiceAction("re-deploy")}
+            >
+              {"   "}Re-deploy
+            </button>
+          )}
+          {processing === "un-deploy" ? (
+            <button className="bg-blue btn btn-primary btn-sm float-right disabled">
+              <Spinner animation="border" as="span" size="sm" />
+            </button>
+          ) : (
+            <button
+              className={"bg-blue btn btn-primary btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
+              onClick={() => handleServiceAction("un-deploy")}
+            >
+              {"   "}Un-deploy
+            </button>
+          )}
           <button
             className={"btn btn-danger btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
             onClick={handleServiceDelete}

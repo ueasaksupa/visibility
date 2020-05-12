@@ -94,6 +94,18 @@ def delete_service(service=None, name=None):
         name))
     return jsonify({"data": "OK"})
 
+# PATCH : for update
+@app.route('/services/<service>/<name>', methods=['PATCH'])
+def update_service(service=None, name=None):
+    data = request.json
+    status = data["changeStatusTo"]
+
+    query = {"name": name}
+    newvalues = {"$set": {"status": status}}
+
+    result = serviceDB[service].update_one(query, newvalues)
+    return jsonify({"data": "OK"})
+
 
 if __name__ == '__main__':
     socketio.init_app(app, cors_allowed_origins="*",
