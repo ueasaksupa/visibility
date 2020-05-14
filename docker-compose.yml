@@ -20,7 +20,15 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: dbpass
 
   backend:
-    build: .
+    build:
+      context: ./backend
     ports:
       - 5000:5000
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - 3000:3000
     restart: always
