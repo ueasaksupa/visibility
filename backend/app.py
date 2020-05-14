@@ -10,7 +10,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
 cors = CORS(app)
-client = MongoClient('mongodb://localhost:27017',
+client = MongoClient('mongodb://mongo:27017',
                      username="root", password="dbpass")
 notiftcationDB = client.notification
 serviceDB = client.services
@@ -108,6 +108,5 @@ def update_service(service=None, name=None):
 
 
 if __name__ == '__main__':
-    socketio.init_app(app, cors_allowed_origins="*",
-                      host="0.0.0.0", port=5000)
-    socketio.run(app, debug=True)
+    socketio.init_app(app, cors_allowed_origins="*")
+    socketio.run(app, host="0.0.0.0", port=5000)

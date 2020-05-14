@@ -68,12 +68,12 @@ const NavigationBar = (props) => {
 
   useEffect(() => {
     fetchAlertList();
-    // const socket = socketIOClient(endpoint);
-    // socket.on("msg", (data) => {
-    //   console.log(data);
-    //   setAlertNum((prevAlertNum) => prevAlertNum + 1);
-    //   fetchAlertList();
-    // });
+    const socket = socketIOClient(endpoint);
+    socket.on("msg", (data) => {
+      console.log(data);
+      setAlertNum((prevAlertNum) => prevAlertNum + 1);
+      fetchAlertList();
+    });
   }, []);
 
   return (

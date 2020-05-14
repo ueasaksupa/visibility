@@ -11,7 +11,7 @@ import { NSO_API } from "../api/apiBackend";
 import BACKEND from "../api/pythonBackend";
 
 const ServiceView = (props) => {
-  const [vpwsService, setVpwsService] = useState([]);
+  const [currentService, setCurrentService] = useState({});
   const [selectedService, setSelectedService] = useState([]);
   const [deleteModalShow, setDeleteModalShow] = useState(false);
   const [deleteProgress, setDeleteProgress] = useState([]);
@@ -70,14 +70,18 @@ const ServiceView = (props) => {
     fetchServices();
   };
 
-  const fetchServices = async (e) => {
-    let response = await BACKEND.get("/services/vpws");
-    setVpwsService(response.data.response);
+  const fetchServices = (e) => {
+    const serviceList = ["vpws", "elan"];
+    serviceList.forEach((ele) => {
+      BACKEND.get(`/services/${ele}`).then((response) => {
+        setCurrentService((currentService) => ({ ...currentService, [ele]: response.data.response }));
+      });
+    });
   };
 
   const renderVpwsTableBody = () => {
-    // console.log(vpwsService);
-    return vpwsService.map((ele, index) => {
+    if (!currentService.vpws) return null;
+    return currentService.vpws.map((ele, index) => {
       return (
         <tr key={index}>
           <td>
@@ -98,6 +102,35 @@ const ServiceView = (props) => {
           <td>{ele.intf3}</td>
           <td>{ele.labelPE}</td>
           <td>{ele.labelACC}</td>
+          <td>{ele.group}</td>
+          <td>{ele.domain}</td>
+        </tr>
+      );
+    });
+  };
+
+  const renderElanTableBody = () => {
+    if (!currentService.elan) return null;
+    return currentService.elan.map((ele, index) => {
+      return (
+        <tr key={index}>
+          <td>
+            <input id="serviceSelectBox" onChange={(e) => handleOnCheckBoxClick(e, ele)} type="checkbox"></input>
+          </td>
+          <td>
+            {" "}
+            <Badge variant={ele.status === "active" ? "primary" : "secondary"}>{ele.status}</Badge>
+          </td>
+          <td>{ele.name}</td>
+          <td>{ele.scale === 1 ? ele.st_vlan : `${ele.st_vlan}-${parseInt(ele.st_vlan) + parseInt(ele.scale) - 1}`}</td>
+          <td>{ele.scale === 1 ? ele.st_evi : `${ele.st_evi}-${parseInt(ele.st_evi) + parseInt(ele.scale) - 1}`}</td>
+          <td>{ele.node1}</td>
+          <td>{ele.intf1}</td>
+          <td>{ele.node2}</td>
+          <td>{ele.intf2}</td>
+          <td>{ele.node3}</td>
+          <td>{ele.intf3}</td>
+          <td>{ele.rt}</td>
           <td>{ele.group}</td>
           <td>{ele.domain}</td>
         </tr>
@@ -197,49 +230,7 @@ const ServiceView = (props) => {
                 <th>Domain</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>
-                  <input type="checkbox" />
-                </td>
-                <td>
-                  <Badge variant="primary">active</Badge>
-                </td>
-                <td>Background Traffic ELAN (PE to PE) slice Bandwidth</td>
-                <td>2051-3050</td>
-                <td>12051-13050</td>
-                <td>NPE1</td>
-                <td>TenGigE0/9/0/45</td>
-                <td>-</td>
-                <td>-</td>
-                <td>UPE1</td>
-                <td>TenGigE0/7/0/0</td>
-                <td>1000</td>
-                <td>elan-bg-bw</td>
-                <td>elan</td>
-              </tr>
-              <tr>
-                <td>
-                  <input type="checkbox" />
-                </td>
-                <td>
-                  {" "}
-                  <Badge variant="primary">active</Badge>
-                </td>
-                <td>Background Traffic ELAN (PE to PE) slice Latency</td>
-                <td>3051-4050</td>
-                <td>13051-14050</td>
-                <td>NPE1</td>
-                <td>TenGigE0/9/0/45</td>
-                <td>-</td>
-                <td>-</td>
-                <td>UPE1</td>
-                <td>TenGigE0/7/0/0</td>
-                <td>2000</td>
-                <td>elan-bg-lt</td>
-                <td>elan</td>
-              </tr>
-            </tbody>
+            <tbody>{renderElanTableBody()}</tbody>
           </Table>
         </div>
       </div>

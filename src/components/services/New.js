@@ -233,6 +233,80 @@ const FormVPWS = (props) => {
 };
 
 const FormELAN = (props) => {
+  let deviceOption = [<option key="0">-</option>];
+  const [intfNumberSelector1, setIntfNumberSelector1] = useState(null);
+  const [intfNumberSelector2, setIntfNumberSelector2] = useState(null);
+  const [intfNumberSelector3, setIntfNumberSelector3] = useState(null);
+
+  deviceOption = [
+    ...deviceOption,
+    props.devices.map((deviceName, index) => {
+      return <option key={index + 1}>{deviceName}</option>;
+    }),
+  ];
+
+  const fetchInterfaceId = () => {
+    if (props.inputParams.node1 && props.inputParams.intfTypeNode1) {
+      NSO_API.get(
+        `restconf/data/tailf-ncs:devices/device=${props.inputParams.node1}/config/tailf-ned-cisco-ios-xr:interface/${props.inputParams.intfTypeNode1}`,
+      ).then((response) => {
+        console.log("1: ", response);
+        if (response.status === 200) {
+          setIntfNumberSelector1([
+            <option key="0">-</option>,
+            ...response.data[`tailf-ned-cisco-ios-xr:${props.inputParams.intfTypeNode1}`].map((ele, index) => {
+              return <option key={index + 1}>{ele.id}</option>;
+            }),
+          ]);
+        } else {
+          setIntfNumberSelector1(null);
+        }
+      });
+    }
+    if (props.inputParams.node2 && props.inputParams.intfTypeNode2) {
+      NSO_API.get(
+        `restconf/data/tailf-ncs:devices/device=${props.inputParams.node2}/config/tailf-ned-cisco-ios-xr:interface/${props.inputParams.intfTypeNode2}`,
+      ).then((response) => {
+        console.log("2: ", response);
+        if (response.status === 200) {
+          setIntfNumberSelector2([
+            <option key="0">-</option>,
+            ...response.data[`tailf-ned-cisco-ios-xr:${props.inputParams.intfTypeNode2}`].map((ele, index) => {
+              return <option key={index + 1}>{ele.id}</option>;
+            }),
+          ]);
+        } else {
+          setIntfNumberSelector2(null);
+        }
+      });
+    }
+    if (props.inputParams.node3 && props.inputParams.intfTypeNode3) {
+      NSO_API.get(
+        `restconf/data/tailf-ncs:devices/device=${props.inputParams.node3}/config/tailf-ned-cisco-ios-xr:interface/${props.inputParams.intfTypeNode3}`,
+      ).then((response) => {
+        console.log("3: ", response);
+        if (response.status === 200) {
+          setIntfNumberSelector3([
+            <option key="0">-</option>,
+            ...response.data[`tailf-ned-cisco-ios-xr:${props.inputParams.intfTypeNode3}`].map((ele, index) => {
+              return <option key={index + 1}>{ele.id}</option>;
+            }),
+          ]);
+        } else {
+          setIntfNumberSelector3(null);
+        }
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchInterfaceId();
+  }, [
+    props.inputParams.node1 + props.inputParams.intfTypeNode1,
+    props.inputParams.node2 + props.inputParams.intfTypeNode2,
+    props.inputParams.node3 + props.inputParams.intfTypeNode3,
+  ]);
+
   return (
     <>
       <Form.Row>
@@ -280,27 +354,68 @@ const FormELAN = (props) => {
       <Form.Row>
         <Form.Group as={Col} controlId="node1">
           <Form.Label>AGG 1</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams.node1} />
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.node1}>
+            {deviceOption}
+          </Form.Control>
         </Form.Group>
-        <Form.Group as={Col} controlId="intfNode1">
+        <Form.Group as={Col} controlId="intfTypeNode1">
           <Form.Label>Interface</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams.intfNode1} />
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.intfTypeNode1}>
+            <option>GigabitEthernet</option>
+            <option>Bundle-Ether</option>
+            <option>TenGigE</option>
+            <option>HundredGigE</option>
+          </Form.Control>
+        </Form.Group>
+        <Form.Group as={Col} controlId="intfNumberNode1">
+          <Form.Label>Number</Form.Label>
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.intfNumberNode1}>
+            {intfNumberSelector1 ? intfNumberSelector1 : <option>-</option>}
+          </Form.Control>
         </Form.Group>
         <Form.Group as={Col} controlId="node2">
           <Form.Label>AGG 2</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams.node2} />
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.node2}>
+            {deviceOption}
+          </Form.Control>
         </Form.Group>
-        <Form.Group as={Col} controlId="intfNode2">
+        <Form.Group as={Col} controlId="intfTypeNode2">
           <Form.Label>Interface</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams.intfNode2} />
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.intfTypeNode2}>
+            <option>GigabitEthernet</option>
+            <option>Bundle-Ether</option>
+            <option>TenGigE</option>
+            <option>HundredGigE</option>
+          </Form.Control>
         </Form.Group>
-        <Form.Group as={Col} controlId="node3">
+        <Form.Group as={Col} controlId="intfNumberNode2">
+          <Form.Label>Number</Form.Label>
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.intfNumberNode2}>
+            {intfNumberSelector2 ? intfNumberSelector2 : <option>-</option>}
+          </Form.Control>{" "}
+        </Form.Group>
+      </Form.Row>
+      <Form.Row>
+        <Form.Group as={Col} md="2" controlId="node3">
           <Form.Label>ACC</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams.node3} />
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.node3}>
+            {deviceOption}
+          </Form.Control>
         </Form.Group>
-        <Form.Group as={Col} controlId="intfNode3">
+        <Form.Group as={Col} md="2" controlId="intfTypeNode3">
           <Form.Label>Interface</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams.intfNode3} />
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.intfTypeNode3}>
+            <option>GigabitEthernet</option>
+            <option>Bundle-Ether</option>
+            <option>TenGigE</option>
+            <option>HundredGigE</option>
+          </Form.Control>
+        </Form.Group>
+        <Form.Group as={Col} md="2" controlId="intfNumberNode3">
+          <Form.Label>Number</Form.Label>
+          <Form.Control as="select" onChange={props.onChange} value={props.inputParams.intfNumberNode3}>
+            {intfNumberSelector3 ? intfNumberSelector3 : <option>-</option>}
+          </Form.Control>{" "}
         </Form.Group>
       </Form.Row>
     </>
@@ -325,12 +440,12 @@ const ServiceNew = (props) => {
     //
     labelPE: "1020",
     labelACC: "1020",
-    "x-connect-group": "xconnect",
-    "p2p-domain": "p2p",
+    "x-connect-group": "vpws-bg-bw",
+    "p2p-domain": "eline-bg-bw",
     //
-    "evpn-rt": "",
-    "bridge-group": "",
-    "bridge-domain": "",
+    "evpn-rt": "1111",
+    "bridge-group": "elan-bg-bw",
+    "bridge-domain": "elan",
     //
     intfTypeNode1: "TenGigE",
     intfTypeNode2: "TenGigE",
@@ -385,7 +500,38 @@ const ServiceNew = (props) => {
       }
       payload["vpws:vpws"] = servicesParams;
     } else if (selectedService === "ELAN") {
-      payload["elan:elan"] = {};
+      for (let i = 0; i < inputParams.scale; i++) {
+        servicesParams.push({
+          "service-id": `${inputParams["service-id"]}_${i}`,
+          "common-param": {
+            "vlan-id": parseInt(inputParams["vlan-id"]) + i,
+            "evpn-evi": parseInt(inputParams["evpn-evi"]) + i,
+            "evpn-rt": inputParams["evpn-rt"],
+            "bridge-domain": inputParams["bridge-domain"],
+            "bridge-group": inputParams["bridge-group"],
+          },
+          "device-specific": {
+            devices: [
+              {
+                device: inputParams.node3,
+                "interface-type": inputParams.intfTypeNode3,
+                [`${inputParams.intfTypeNode3}-id`]: inputParams.intfNumberNode3,
+              },
+              {
+                device: inputParams.node2,
+                "interface-type": inputParams.intfTypeNode2,
+                [`${inputParams.intfTypeNode2}-id`]: inputParams.intfNumberNode2,
+              },
+              {
+                device: inputParams.node1,
+                "interface-type": inputParams.intfTypeNode1,
+                [`${inputParams.intfTypeNode1}-id`]: inputParams.intfNumberNode1,
+              },
+            ],
+          },
+        });
+      }
+      payload["elan:elan"] = servicesParams;
     }
     return payload;
   };
@@ -406,7 +552,7 @@ const ServiceNew = (props) => {
       }
     } catch (error) {
       console.log("err dryrun: ", error.response);
-      setErrMsg(error.response.data);
+      setErrMsg(error.response.data.errors.error[0]["error-message"]);
     }
     setProcessingDryrun(false);
   };
@@ -414,29 +560,50 @@ const ServiceNew = (props) => {
   const serviceCreateHandler = async (e) => {
     e.preventDefault();
     setModalShow(true);
-
-    let data = {
-      payload: payloadCreator(),
-      status: "active",
-      type: selectedService.toLowerCase(),
-      scale: inputParams.scale,
-      name: inputParams["service-id"],
-      st_vlan: inputParams["vlan-id"],
-      st_evi: inputParams["evpn-evi"],
-      node1: inputParams["node1"],
-      node2: inputParams["node2"],
-      node3: inputParams["node3"],
-      intf1: inputParams["intfTypeNode1"] + inputParams["intfNumberNode1"],
-      intf2: inputParams["intfTypeNode2"] + inputParams["intfNumberNode2"],
-      intf3: inputParams["intfTypeNode3"] + inputParams["intfNumberNode3"],
-      labelACC: inputParams.labelACC,
-      labelPE: inputParams.labelPE,
-      group: inputParams["x-connect-group"],
-      domain: inputParams["p2p-domain"],
-    };
-    let responseBACKEND = await BACKEND.post("/services/vpws", data);
+    let data;
+    if (selectedService === "VPWS") {
+      data = {
+        payload: payloadCreator(),
+        status: "active",
+        type: selectedService.toLowerCase(),
+        scale: inputParams.scale,
+        name: inputParams["service-id"],
+        st_vlan: inputParams["vlan-id"],
+        st_evi: inputParams["evpn-evi"],
+        node1: inputParams["node1"],
+        node2: inputParams["node2"],
+        node3: inputParams["node3"],
+        intf1: inputParams["intfTypeNode1"] + inputParams["intfNumberNode1"],
+        intf2: inputParams["intfTypeNode2"] + inputParams["intfNumberNode2"],
+        intf3: inputParams["intfTypeNode3"] + inputParams["intfNumberNode3"],
+        labelACC: inputParams.labelACC,
+        labelPE: inputParams.labelPE,
+        group: inputParams["x-connect-group"],
+        domain: inputParams["p2p-domain"],
+      };
+    } else if (selectedService === "ELAN") {
+      data = {
+        payload: payloadCreator(),
+        status: "active",
+        type: selectedService.toLowerCase(),
+        scale: inputParams.scale,
+        name: inputParams["service-id"],
+        st_vlan: inputParams["vlan-id"],
+        st_evi: inputParams["evpn-evi"],
+        node1: inputParams["node1"],
+        node2: inputParams["node2"],
+        node3: inputParams["node3"],
+        intf1: inputParams["intfTypeNode1"] + inputParams["intfNumberNode1"],
+        intf2: inputParams["intfTypeNode2"] + inputParams["intfNumberNode2"],
+        intf3: inputParams["intfTypeNode3"] + inputParams["intfNumberNode3"],
+        rt: inputParams["evpn-rt"],
+        group: inputParams["bridge-group"],
+        domain: inputParams["bridge-domain"],
+      };
+    }
+    let responseBACKEND = await BACKEND.post(`/services/${selectedService.toLowerCase()}`, data);
     if (responseBACKEND.status === 200) {
-      // Successfullu save service to DB
+      // Successfully save service to DB
       // go ahead create on NSO
       try {
         let responseNSO = await NSO_API.post("restconf/data", data.payload);
@@ -449,7 +616,7 @@ const ServiceNew = (props) => {
         console.log("err deploy: ", error.response);
         setModalShow(false);
         setIsDeployComplete(false);
-        setErrMsg(error.response.data);
+        setErrMsg(error.response.data.errors.error[0]["error-message"]);
       }
     }
   };
@@ -518,7 +685,7 @@ const ServiceNew = (props) => {
         {errMsg ? (
           <Alert variant="danger" onClose={() => setErrMsg(null)} dismissible>
             <Alert.Heading>You got an error!</Alert.Heading>
-            <p>{errMsg.errors.error[0]["error-message"]}</p>
+            <p>{errMsg}</p>
           </Alert>
         ) : null}
         <div className="card">

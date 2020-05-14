@@ -1,7 +1,7 @@
 import React from "react";
 import Table from "react-bootstrap/Table";
 
-const NodeDetail = props => {
+const NodeDetail = (props) => {
   const { selectedNode } = props;
   const renderTableBody = () => {
     return selectedNode.prefixSID.map((ele, index) => {
