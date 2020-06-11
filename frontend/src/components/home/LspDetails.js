@@ -27,7 +27,15 @@ const LspDetails = (props) => {
   const [selectedLsp, setSelectedLsp] = useState(null);
 
   useEffect(() => {
-    fetchData();
+    let lspDataCache = sessionStorage.getItem("lspData");
+    if (lspDataCache) {
+      // use data in cache if possible
+      console.log("lspData cache hit");
+      setLspData(JSON.parse(lspDataCache));
+    } else {
+      // if the first time access fetch data
+      fetchData();
+    }
   }, []);
 
   const fetchData = async () => {
@@ -35,6 +43,8 @@ const LspDetails = (props) => {
     console.log("lspR:", lspR);
     let extractor = new xtcExtractor();
     setLspData(extractor.getLspObject(lspR.data));
+    // set sessionStorage for caching
+    sessionStorage.setItem("lspData", JSON.stringify(extractor.getLspObject(lspR.data)));
   };
 
   const onRefreshButton = () => {

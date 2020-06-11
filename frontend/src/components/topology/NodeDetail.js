@@ -19,7 +19,7 @@ const NodeDetail = (props) => {
   if (selectedNode) {
     const nodename = selectedNode.nodename;
     return (
-      <div>
+      <div className="mh-100" style={{ overflowY: "scroll" }}>
         <div className="h2 pt-4 pb-3">{nodename}</div>
         <div className="h5">Prefix SID</div>
         <Table striped bordered hover>
