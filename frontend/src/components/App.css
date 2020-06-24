@@ -229,3 +229,7 @@ tr.lsp-detail.active {
 .nav-pills .nav-link {
   border-radius: 0;
 }
+
+.collapse-row {
+  visibility: collapse;
+}

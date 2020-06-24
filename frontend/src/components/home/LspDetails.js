@@ -42,9 +42,13 @@ const LspDetails = (props) => {
     let lspR = await SR_PCE_API.get("/lsp/subscribe/txt?max-lsp-history=0&batch=0");
     console.log("lspR:", lspR);
     let extractor = new xtcExtractor();
-    setLspData(extractor.getLspObject(lspR.data));
-    // set sessionStorage for caching
-    sessionStorage.setItem("lspData", JSON.stringify(extractor.getLspObject(lspR.data)));
+    if (lspR.data) {
+      setLspData(extractor.getLspObject(lspR.data));
+      // set sessionStorage for caching
+      sessionStorage.setItem("lspData", JSON.stringify(extractor.getLspObject(lspR.data)));
+    } else {
+      setLspData(undefined);
+    }
   };
 
   const onRefreshButton = () => {
@@ -103,7 +107,15 @@ const LspDetails = (props) => {
     return row;
   };
 
-  if (lspData !== null) {
+  if (lspData === null) {
+    return (
+      <div className="text-center mt-5">
+        <Spinner animation="border" variant="primary" />
+      </div>
+    );
+  } else if (lspData === undefined) {
+    return <div className="text-center mt-5">ERROR: no data from API request</div>;
+  } else {
     return (
       <>
         <Card className="mb-3">
@@ -137,12 +149,6 @@ const LspDetails = (props) => {
         </Card>
         <LspPathDetail selectedLsp={selectedLsp} />
       </>
-    );
-  } else {
-    return (
-      <div className="text-center mt-5">
-        <Spinner animation="border" variant="primary" />
-      </div>
     );
   }
 };

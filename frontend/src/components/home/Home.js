@@ -23,7 +23,11 @@ const Home = (props) => {
   const fetchData = async () => {
     let topoR = await SR_PCE_API.get("/topo/subscribe/txt");
     let extractor = new xtcExtractor();
-    setTopologyData(extractor.getTopologyObject(topoR.data));
+    if (topoR.data) {
+      setTopologyData(extractor.getTopologyObject(topoR.data));
+    } else {
+      setTopologyData(undefined);
+    }
   };
 
   const onRefreshButton = () => {
@@ -73,7 +77,7 @@ const Home = (props) => {
       </div>
     );
   } else if (topologyData === undefined) {
-    TopoCompoennt = <div className="text-center mt-5">ERROR</div>;
+    TopoCompoennt = <div className="text-center mt-5">ERROR: no data from API request</div>;
   } else {
     TopoCompoennt = (
       <>
