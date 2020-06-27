@@ -155,7 +155,7 @@ div .no-padding {
 .content-panel-left {
   overflow: auto;
   transition: width 0.2s;
-  /* border: #eaeaea solid 1px; */
+  border-right: #eaeaea solid 1px;
 }
 .content-panel-right {
   overflow: auto;
@@ -232,4 +232,8 @@ tr.lsp-detail.active {
 
 .collapse-row {
   visibility: collapse;
+}
+
+ul.service-list {
+  list-style-type: none;
 }

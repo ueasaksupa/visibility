@@ -6,6 +6,7 @@ import Badge from "react-bootstrap/Badge";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import ProgressBar from "react-bootstrap/ProgressBar";
+import DataTable from "react-data-table-component";
 
 import { NSO_API } from "../api/apiBackend";
 import BACKEND from "../api/pythonBackend";
@@ -40,6 +41,9 @@ const ServiceView = (props) => {
   };
 
   const handleServiceDelete = () => {
+    // check if no selected service. Do nothing
+    if (selectedService.length === 0) return;
+
     setDeleteModalShow(true);
     for (const ele of selectedService) {
       const type = ele.type;
@@ -94,12 +98,6 @@ const ServiceView = (props) => {
           <td>{ele.name}</td>
           <td>{ele.scale === 1 ? ele.st_vlan : `${ele.st_vlan}-${parseInt(ele.st_vlan) + parseInt(ele.scale) - 1}`}</td>
           <td>{ele.scale === 1 ? ele.st_evi : `${ele.st_evi}-${parseInt(ele.st_evi) + parseInt(ele.scale) - 1}`}</td>
-          <td>{ele.node1}</td>
-          <td>{ele.intf1}</td>
-          <td>{ele.node2}</td>
-          <td>{ele.intf2}</td>
-          <td>{ele.node3}</td>
-          <td>{ele.intf3}</td>
           <td>{ele.labelPE}</td>
           <td>{ele.labelACC}</td>
           <td>{ele.group}</td>
@@ -124,12 +122,6 @@ const ServiceView = (props) => {
           <td>{ele.name}</td>
           <td>{ele.scale === 1 ? ele.st_vlan : `${ele.st_vlan}-${parseInt(ele.st_vlan) + parseInt(ele.scale) - 1}`}</td>
           <td>{ele.scale === 1 ? ele.st_evi : `${ele.st_evi}-${parseInt(ele.st_evi) + parseInt(ele.scale) - 1}`}</td>
-          <td>{ele.node1}</td>
-          <td>{ele.intf1}</td>
-          <td>{ele.node2}</td>
-          <td>{ele.intf2}</td>
-          <td>{ele.node3}</td>
-          <td>{ele.intf3}</td>
           <td>{ele.rt}</td>
           <td>{ele.group}</td>
           <td>{ele.domain}</td>
@@ -143,97 +135,104 @@ const ServiceView = (props) => {
   }, []);
 
   return (
-    <>
-      <div className="container-fluid">
-        <div className="btn-group btn-group-sm float-right">
-          <Link className="bg-blue btn btn-primary btn-sm float-right" to="/service/new">
-            <i className="fas fa-plus" />
-            {"   "}new
-          </Link>
-          {processing === "re-deploy" ? (
-            <button className="bg-blue btn btn-primary btn-sm float-right disabled">
-              <Spinner animation="border" as="span" size="sm" />
-            </button>
-          ) : (
-            <button
-              className={"bg-blue btn btn-primary btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
-              onClick={() => handleServiceAction("re-deploy")}
-            >
-              {"   "}Re-deploy
-            </button>
-          )}
-          {processing === "un-deploy" ? (
-            <button className="bg-blue btn btn-primary btn-sm float-right disabled">
-              <Spinner animation="border" as="span" size="sm" />
-            </button>
-          ) : (
-            <button
-              className={"bg-blue btn btn-primary btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
-              onClick={() => handleServiceAction("un-deploy")}
-            >
-              {"   "}Un-deploy
-            </button>
-          )}
-          <button
-            className={"btn btn-danger btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
-            onClick={handleServiceDelete}
-          >
-            {"   "}Delete
-          </button>
+    <div className="d-md-flex h-100 w-100">
+      <div className="content-panel-left h-100 mb-sm-2 mr-md-4 ml-md-2 mt-md-2 mb-md-0" style={{ width: "20%" }}>
+        <div className="container-fluid">
+          <div className="h3">Services</div>
+        </div>
+        <div className="container-fluid">
+          L2vpn
+          <ul className="service-list">
+            <li>E-LAN</li>
+            <li>VPWS</li>
+          </ul>
+          L3VPN
+          <ul className="service-list">
+            <li>Static</li>
+            <li>Connected</li>
+            <li>BGP</li>
+          </ul>
         </div>
       </div>
-      <div className="container-fluid mt-3">
-        <div className="h3">Service overview</div>
-        <div className="h6">VPWS</div>
-        <div style={{ overflowX: "auto", whiteSpace: "nowrap" }}>
-          <Table striped bordered hover size="sm">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>status</th>
-                <th>Service</th>
-                <th>Vlan</th>
-                <th>EVI</th>
-                <th>Node 1</th>
-                <th>Intf 1</th>
-                <th>Node 2</th>
-                <th>Intf 2</th>
-                <th>Node 3</th>
-                <th>Intf 3</th>
-                <th>Label PE</th>
-                <th>Label ACC</th>
-                <th>Group</th>
-                <th>Domain</th>
-              </tr>
-            </thead>
-            <tbody>{renderVpwsTableBody()}</tbody>
-          </Table>
+      <div className="content-panel-right h-100 mb-sm-2 mt-md-2 mb-md-0" style={{ width: "80%" }}>
+        <div className="container-fluid">
+          <div className="btn-group btn-group-sm float-right">
+            <Link className="bg-blue btn btn-primary btn-sm float-right" to="/service/new">
+              <i className="fas fa-plus" />
+            </Link>
+            {processing === "re-deploy" ? (
+              <button className="bg-blue btn btn-primary btn-sm float-right disabled" style={{ minWidth: "85px" }}>
+                <Spinner animation="grow" as="span" size="sm" />
+              </button>
+            ) : (
+              <button
+                className={"bg-blue btn btn-primary btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
+                onClick={() => handleServiceAction("re-deploy")}
+              >
+                {"   "}Re-deploy
+              </button>
+            )}
+            {processing === "un-deploy" ? (
+              <button className="bg-blue btn btn-primary btn-sm float-right disabled" style={{ minWidth: "85px" }}>
+                <Spinner animation="grow" as="span" size="sm" />
+              </button>
+            ) : (
+              <button
+                className={"bg-blue btn btn-primary btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
+                onClick={() => handleServiceAction("un-deploy")}
+              >
+                {"   "}Un-deploy
+              </button>
+            )}
+            <button
+              className={"btn btn-danger btn-sm float-right " + (selectedService.length === 0 ? "disabled" : "")}
+              onClick={handleServiceDelete}
+            >
+              {"   "}Delete
+            </button>
+          </div>
         </div>
-        <div className="h6">ELAN</div>
-        <div style={{ overflowX: "auto", whiteSpace: "nowrap" }}>
-          <Table striped bordered hover size="sm">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>status</th>
-                <th>Service</th>
-                <th>Vlan</th>
-                <th>EVI</th>
-                <th>Node 1</th>
-                <th>Intf 1</th>
-                <th>Node 2</th>
-                <th>Intf 2</th>
-                <th>Node 3</th>
-                <th>Intf 3</th>
-                <th>RT</th>
-                <th>Group</th>
-                <th>Domain</th>
-              </tr>
-            </thead>
-            <tbody>{renderElanTableBody()}</tbody>
-          </Table>
+        <div className="container-fluid mt-3">
+          <div className="h6">VPWS</div>
+          <div style={{ overflowX: "auto", whiteSpace: "nowrap" }}>
+            <Table striped bordered hover size="sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>status</th>
+                  <th>Service</th>
+                  <th>Vlan</th>
+                  <th>EVI</th>
+                  <th>Label PE</th>
+                  <th>Label ACC</th>
+                  <th>Group</th>
+                  <th>Domain</th>
+                </tr>
+              </thead>
+              <tbody>{renderVpwsTableBody()}</tbody>
+            </Table>
+          </div>
+          <div className="h6">ELAN</div>
+          <div style={{ overflowX: "auto", whiteSpace: "nowrap" }}>
+            <Table striped bordered hover size="sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>status</th>
+                  <th>Service</th>
+                  <th>Vlan</th>
+                  <th>EVI</th>
+                  <th>RT</th>
+                  <th>Group</th>
+                  <th>Domain</th>
+                </tr>
+              </thead>
+              <tbody>{renderElanTableBody()}</tbody>
+            </Table>
+          </div>
         </div>
       </div>
+
       {/* MODAL */}
       <Modal show={deleteModalShow} backdrop="static">
         <Modal.Body>
@@ -256,7 +255,7 @@ const ServiceView = (props) => {
           </button>
         </Modal.Footer>
       </Modal>
-    </>
+    </div>
   );
 };
 

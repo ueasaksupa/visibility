@@ -18,14 +18,21 @@ const CongestedLsp = (props) => {
   const scrollToBottom = () => window.scrollTo(0, document.body.scrollHeight);
 
   const handleOnCheckBoxClick = (event, group) => {
-    event.stopPropagation();
     // using for store tmp list of lsp related to the event, helper for deselect filter function.
     let tmpTargetLspName = [];
     // prepare list of lsp to be selected/de-selected.
-    let lspList = group.lsps.map((lsp) => {
-      tmpTargetLspName.push(lsp.lspName);
-      return { lspName: lsp.lspName, lspSrcNode: group.lspSrcNode };
-    });
+    let lspList;
+    if (group.lsps) {
+      // it is checkbox from group row
+      lspList = group.lsps.map((lsp) => {
+        tmpTargetLspName.push(lsp.lspName);
+        return { lspName: lsp.lspName, lspSrcNode: lsp.lspSrcNode };
+      });
+    } else {
+      // it is checkbox from expanded row
+      tmpTargetLspName.push(group.lspName);
+      lspList = [{ lspName: group.lspName, lspSrcNode: group.lspSrcNode }];
+    }
     //
     const isChecked = event.target.checked;
     if (isChecked) {
@@ -121,7 +128,7 @@ const CongestedLsp = (props) => {
           service: service,
           lspSrcNode: lsp.lspSrcNode,
           lspDstNode: lsp.lspDstNode,
-          lsps: [{ id: index, lspName: lsp.lspName, traffic: lsp.traffic, delay: lsp.delay }],
+          lsps: [{ id: index, lspName: lsp.lspName, traffic: lsp.traffic, delay: lsp.delay, lspSrcNode: lsp.lspSrcNode }],
         };
       } else {
         // push the lsp name into list
@@ -130,6 +137,7 @@ const CongestedLsp = (props) => {
           lspName: lsp.lspName,
           traffic: lsp.traffic,
           delay: lsp.delay,
+          lspSrcNode: lsp.lspSrcNode,
         });
         groupedCongestedLsp[service + lsp.lspSrcNode + lsp.lspDstNode].traffic =
           groupedCongestedLsp[service + lsp.lspSrcNode + lsp.lspDstNode].traffic + parseInt(lsp.traffic.split(" ")[0]);
@@ -158,7 +166,7 @@ const CongestedLsp = (props) => {
         cell: (row) => (
           <input
             onClick={(e) => e.stopPropagation()}
-            onChange={(e) => console.log(row)}
+            onChange={(e) => handleOnCheckBoxClick(e, row)}
             type="checkbox"
             defaultChecked={searchLspSelectedState(row.lspName)}
           ></input>
@@ -203,18 +211,7 @@ const CongestedLsp = (props) => {
         <tr key={key + "_"} className="collapse-row" style={{ visibility: currentExpandRow.includes(key) ? "visible" : null }}>
           <td></td>
           <td colSpan="5">
-            <DataTable
-              // selectableRows
-              // selectableRowSelected={(row) => searchLspSelectedState(row.lspName)}
-              // onSelectedRowsChange={({ allSelected, selectedCount, selectedRows }) =>
-              //   console.log(allSelected, selectedCount, selectedRows)
-              // }
-              pagination
-              dense
-              noHeader
-              columns={tableColumns}
-              data={groupedCongestedLsp[key].lsps}
-            />
+            <DataTable pagination dense noHeader columns={tableColumns} data={groupedCongestedLsp[key].lsps} />
           </td>
         </tr>,
       );
