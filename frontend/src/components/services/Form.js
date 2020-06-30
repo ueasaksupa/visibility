@@ -178,7 +178,8 @@ export const FormVPWS = (props) => {
           </Form.Control>
         </Form.Group>
         <button
-          className="bg-blue btn btn-primary btn-sm my-3"
+          style={{ marginTop: "30px" }}
+          className="bg-blue btn btn-primary btn-sm mb-3"
           onClick={(e) => {
             e.preventDefault();
             props.onDeviceAdd({
@@ -361,7 +362,8 @@ export const FormELAN = (props) => {
           </Form.Control>
         </Form.Group>
         <button
-          className="bg-blue btn btn-primary btn-sm my-3"
+          style={{ marginTop: "30px" }}
+          className="bg-blue btn btn-primary btn-sm mb-3"
           onClick={(e) => {
             e.preventDefault();
             props.onDeviceAdd({
@@ -555,7 +557,8 @@ export const FormL3VPNBGP = (props) => {
           />
         </Form.Group>
         <button
-          className="bg-blue btn btn-primary btn-sm my-3"
+          style={{ marginTop: "30px" }}
+          className="bg-blue btn btn-primary btn-sm mb-3"
           onClick={(e) => {
             e.preventDefault();
             props.onDeviceAdd({

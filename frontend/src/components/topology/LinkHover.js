@@ -1,7 +1,7 @@
 import React from "react";
 
-const LinkHover = props => {
-  const renderAdjSid = data => {
+const LinkHover = (props) => {
+  const renderAdjSid = (data) => {
     return data.map((adjSid, index) => {
       return (
         <div className="col-md-12" key={index}>
@@ -12,7 +12,7 @@ const LinkHover = props => {
       );
     });
   };
-  const renderData = data => {
+  const renderData = (data) => {
     return data.map((link, index) => {
       return (
         <div key={index} style={{ marginBottom: "10px", borderLeft: "3px solid #36B5E5" }}>
@@ -32,7 +32,13 @@ const LinkHover = props => {
   let { linkHoverRef, linkAttr } = props;
   let linkData = [];
   if (linkAttr === null) {
-    return null;
+    // For virtual link (eg. LSP path). It's not have linkAttr props
+    // Must return blank div instead of null to prevent bug when use hover this link before
+    return (
+      <div style={{ display: "none" }} className="hoverlink" ref={linkHoverRef}>
+        no-data
+      </div>
+    );
   }
   ///////
   for (const aEnd in linkAttr) {

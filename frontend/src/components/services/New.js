@@ -58,14 +58,6 @@ const ServiceNew = (props) => {
     "evpn-rt": "1111",
     "bridge-group": "elan-bg-bw",
     "bridge-domain": "elan",
-    //
-    intfTypeNode1: "TenGigE",
-    intfTypeNode2: "TenGigE",
-    intfTypeNode3: "TenGigE",
-    //
-    node1: "AGG3_NPE1",
-    node2: "AGG4_NPE2",
-    node3: "ncs540-5",
   });
 
   const scrollToBottom = () => window.scrollTo(0, document.body.scrollHeight);

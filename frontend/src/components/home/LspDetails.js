@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 
 import Card from "react-bootstrap/Card";
-import Table from "react-bootstrap/Table";
 import Spinner from "react-bootstrap/Spinner";
 import Badge from "react-bootstrap/Badge";
+import DataTable from "react-data-table-component";
 
 import xtcExtractor from "../api/xtcExtractor";
 import { SR_PCE_API } from "../api/apiBackend";
@@ -25,6 +25,45 @@ const LspPathDetail = (props) => {
 const LspDetails = (props) => {
   const [lspData, setLspData] = useState(null);
   const [selectedLsp, setSelectedLsp] = useState(null);
+  const tableColumns = [
+    {
+      name: "Status",
+      sortable: true,
+      selector: "operationalState",
+      cell: (row) => {
+        if (row.operationalState === "lsp-up") {
+          return <Badge variant="success">lsp-up</Badge>;
+        } else {
+          return <Badge variant="danger">lsp-down</Badge>;
+        }
+      },
+    },
+    {
+      name: "Tunnel name",
+      selector: "lspName",
+      sortable: true,
+    },
+    {
+      name: "Source",
+      selector: "source",
+      sortable: true,
+    },
+    {
+      name: "Target",
+      selector: "target",
+      sortable: true,
+    },
+    {
+      name: "Binding SID",
+      selector: "bindingSid",
+      sortable: true,
+    },
+    {
+      name: "Color",
+      selector: "color",
+      sortable: true,
+    },
+  ];
 
   useEffect(() => {
     let lspDataCache = sessionStorage.getItem("lspData");
@@ -56,55 +95,30 @@ const LspDetails = (props) => {
     fetchData();
   };
 
-  const renderTablebody = () => {
-    const row = [];
-    let index = 0;
-    for (const lspName in lspData) {
-      row.push(
-        <tr
-          key={index}
-          className={selectedLsp ? (selectedLsp.lspName === lspName ? "lsp-detail active" : "lsp-detail") : "lsp-detail"}
-          onClick={() => {
-            if (selectedLsp !== null) {
-              if (selectedLsp.lspName === lspName) {
-                // De-selection
-                setSelectedLsp(null);
-                props.onLspTableClick(null);
-              } else {
-                // Change selection
-                setSelectedLsp(lspData[lspName]);
-                props.onLspTableClick(lspData[lspName]);
-              }
-            } else {
-              // select init
-              setSelectedLsp(lspData[lspName]);
-              props.onLspTableClick(lspData[lspName]);
-            }
-          }}
-        >
-          {lspData[lspName].operationalState === "lsp-up" ? (
-            <td className="text-center">
-              <Badge pill variant="success">
-                Up
-              </Badge>
-            </td>
-          ) : (
-            <td className="text-center">
-              <Badge pill variant="danger">
-                Down
-              </Badge>
-            </td>
-          )}
-          <td>{lspName}</td>
-          <td>{lspData[lspName].source}</td>
-          <td>{lspData[lspName].target}</td>
-          <td>{lspData[lspName].bindingSid}</td>
-          <td>{lspData[lspName].color}</td>
-        </tr>,
-      );
-      index += 1;
+  const onRowClickedHandler = (row) => {
+    if (selectedLsp !== null) {
+      if (selectedLsp.lspName === row.lspName) {
+        // De-selection
+        setSelectedLsp(null);
+        props.onLspTableClick(null);
+      } else {
+        // Change selection
+        setSelectedLsp(row);
+        props.onLspTableClick(row);
+      }
+    } else {
+      // select init
+      setSelectedLsp(row);
+      props.onLspTableClick(row);
     }
-    return row;
+  };
+
+  const generateDataTableRow = () => {
+    const rows = [];
+    for (const row in lspData) {
+      rows.push(lspData[row]);
+    }
+    return rows;
   };
 
   if (lspData === null) {
@@ -116,6 +130,7 @@ const LspDetails = (props) => {
   } else if (lspData === undefined) {
     return <div className="text-center mt-5">ERROR: no data from API request</div>;
   } else {
+    let tableData = generateDataTableRow();
     return (
       <>
         <Card className="mb-3">
@@ -131,19 +146,17 @@ const LspDetails = (props) => {
           </Card.Header>
           <Card.Body>
             <div className="lsp-table">
-              <Table striped bordered hover size="sm">
-                <thead>
-                  <tr>
-                    <th>Status</th>
-                    <th>Tunnel Name</th>
-                    <th>Source</th>
-                    <th>Destination</th>
-                    <th>BindingSID</th>
-                    <th>Color</th>
-                  </tr>
-                </thead>
-                <tbody>{renderTablebody()}</tbody>
-              </Table>
+              <DataTable
+                pagination
+                paginationPerPage={14}
+                paginationRowsPerPageOptions={[14, 20, 50, 100]}
+                pointerOnHover
+                dense
+                noHeader
+                columns={tableColumns}
+                data={tableData}
+                onRowClicked={onRowClickedHandler}
+              />
             </div>
           </Card.Body>
         </Card>
