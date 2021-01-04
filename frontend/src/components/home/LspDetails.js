@@ -8,6 +8,10 @@ import DataTable from "react-data-table-component";
 import xtcExtractor from "../api/xtcExtractor";
 import { SR_PCE_API } from "../api/apiBackend";
 
+const SubHeader = (props) => {
+  return <input type="text" placeholder="search" onChange={props.onSearchChangeHandler} />;
+};
+
 const LspPathDetail = (props) => {
   if (props.selectedLsp === null) {
     return <div style={{ margin: "0 1rem 1rem" }}>Select Lsp on table above to see path detail</div>;
@@ -90,6 +94,15 @@ const LspDetails = (props) => {
     }
   };
 
+  const onSearchChangeHandler = (e) => {
+    const type = e.target.type;
+    const value = type === "checkbox" ? e.target.checked : e.target.value;
+    const tmp = [];
+    /*
+    if event come from search-box 
+    */
+  };
+
   const onRefreshButton = () => {
     setLspData(null);
     fetchData();
@@ -148,11 +161,13 @@ const LspDetails = (props) => {
             <div className="lsp-table">
               <DataTable
                 pagination
-                paginationPerPage={14}
-                paginationRowsPerPageOptions={[14, 20, 50, 100]}
+                paginationPerPage={10}
+                paginationRowsPerPageOptions={[10, 20, 50, 100]}
                 pointerOnHover
                 dense
                 noHeader
+                subHeader
+                subHeaderComponent={<SubHeader onSearchChangeHandler={onSearchChangeHandler} />}
                 columns={tableColumns}
                 data={tableData}
                 onRowClicked={onRowClickedHandler}

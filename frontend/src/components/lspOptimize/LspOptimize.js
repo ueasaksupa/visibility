@@ -12,6 +12,7 @@ const LspOptimize = (props) => {
   const [topologyData, setTopologyData] = useState(null);
   const [congestedLsp, setCongestedLsp] = useState(null);
   const [procFindCong, setProcFindCong] = useState(false);
+  const [selectedSlice, setSelectedSlice] = useState("special-slice");
 
   const fetchData = async () => {
     let topoR = await SR_PCE_API.get("/topo/subscribe/txt");
@@ -21,10 +22,11 @@ const LspOptimize = (props) => {
 
   const handleFindCongestion = async () => {
     setProcFindCong(true);
-    let payload = { input: { "interface-utilization": congestionThresHold, "perform-opt-on": "bw-slice" } };
-    let resp = await WAE_API.post("/api/running/networks/network/ais-demands/opm/sr-fetch-congestion/run/_operations", payload, {
-      headers: { "Content-type": "application/vnd.yang.data+json" },
-    });
+    let payload = { input: { "interface-utilization": congestionThresHold, "perform-opt-on": selectedSlice } };
+    let resp = await WAE_API.post(
+      "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/sr-fetch-congestion:sr-fetch-congestion/run/",
+      payload,
+    );
     if (resp.status === 204) {
       setCongestedLsp(null);
       console.log("resp congestion inf:", resp);
@@ -52,7 +54,7 @@ const LspOptimize = (props) => {
         </Card.Header>
         <Card.Body>
           <div className="row m-2">
-            <div className="col-md-10 col-sm-6">
+            <div className="col-md-8 col-sm-6">
               <div className="d-flex">
                 <input
                   type="range"
@@ -67,7 +69,22 @@ const LspOptimize = (props) => {
               </div>
             </div>
             <div className="col-md-2 col-sm-6">
-              <button style={{ width: "135px" }} onClick={handleFindCongestion} className="btn btn-primary float-right">
+              <select
+                className="custom-select custom-select-sm"
+                onChange={(e) => setSelectedSlice(e.target.value)}
+                value={selectedSlice}
+              >
+                <option value="bandwidth-slice">Bandwidth Slice</option>
+                <option value="latency-slice">Latency Slice</option>
+                <option value="special-slice">Special Slice</option>
+              </select>
+            </div>
+            <div className="col-md-2 col-sm-6">
+              <button
+                style={{ width: "135px", fontSize: "12px" }}
+                onClick={handleFindCongestion}
+                className="btn btn-primary float-right"
+              >
                 {procFindCong ? <Spinner animation="grow" size="sm" variant="light" /> : "Find congestions"}
               </button>
             </div>
