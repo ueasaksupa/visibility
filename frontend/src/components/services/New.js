@@ -9,7 +9,12 @@ import Spinner from "react-bootstrap/Spinner";
 import Alert from "react-bootstrap/Alert";
 import Modal from "react-bootstrap/Modal";
 
-import { FormVPWS, FormELAN, FormL3VPNBGP, FormL3VPNSTATIC } from "./Form";
+import FormVPWS from "./FormVPWS";
+import FormELAN from "./FormELAN";
+import FormL3VPNBGP from "./FormL3VPNBGP";
+import FormL3VPNCONNECTED from "./FormL3VPNCONNECTED";
+import FormL3VPNSTATIC from "./FormL3VPNSTATIC";
+import FormL2L3 from "./FormL2L3";
 import { NSO_API } from "../api/apiBackend";
 import BACKEND from "../api/pythonBackend";
 
@@ -36,7 +41,7 @@ const NavLinkData = (props) => {
 const ServiceNew = (props) => {
   const [devices, setDevices] = useState([]);
   const [modalShow, setModalShow] = useState(false);
-  const [selectedService, setSelectedService] = useState("L3VPNSTATIC");
+  const [selectedService, setSelectedService] = useState("L3VPNCONNECTED");
   const [processingDryrun, setProcessingDryrun] = useState(false);
   const [isDeployComplete, setIsDeployComplete] = useState(false);
   const [dryrunResponse, setDryrunResponse] = useState(null);
@@ -67,6 +72,8 @@ const ServiceNew = (props) => {
     neighbor: "1.1.1.1",
     neighbor1: "2.2.2.2",
     neighbor2: "3.3.3.3",
+    // connected
+    "auto-rd": "",
   });
 
   const scrollToBottom = () => window.scrollTo(0, document.body.scrollHeight);
@@ -175,6 +182,66 @@ const ServiceNew = (props) => {
         servicesParams.push(payload);
       }
       payload["L3VPNstatic:L3VPNstatic"] = servicesParams;
+    } else if (selectedService === "L3VPNCONNECTED") {
+      let slice_container =
+        inputParams["slice"].includes("BW") || inputParams["slice"].includes("LT") ? "NPE-ACC-BW-LT" : inputParams["slice"];
+      for (let i = 0; i < inputParams.scale; i++) {
+        let payload = {
+          "service-id": `${inputParams["service-id"]}_${i}`,
+          "l3vpn-connected-type": inputParams["slice"],
+          "common-param": {
+            "pe-vlan": parseInt(inputParams["pe-vlan"]) + i,
+            vrf: `${inputParams["vrf"]}_${parseInt(inputParams["pe-vlan"]) + i}`,
+            rt: `100:${parseInt(inputParams["rt"].split(":")[1]) + i}`,
+            "auto-rd": inputParams["auto-rd"],
+          },
+          [slice_container]: {
+            devices: inputParams.devices,
+          },
+        };
+        if (inputParams["slice"].includes("BW") || inputParams["slice"].includes("LT")) {
+          payload[slice_container]["npe-router-static"] = {
+            "destination-ip": inputParams["destination-ip"],
+            interface: inputParams["interface"],
+            "forward-ip": inputParams["forward-ip"],
+            interface1: inputParams["interface1"],
+            "forward-ip1": inputParams["forward-ip1"],
+          };
+        }
+        if (inputParams["slice"].includes("SP")) {
+          payload[slice_container].BVI = {
+            "bvi-interface": inputParams["bvi-interface"],
+            "bvi-ipv4-address": inputParams["bvi-ipv4-address"],
+            "bvi-mac-address": inputParams["bvi-mac-address"],
+          };
+          payload[slice_container].evpn = {
+            evi: inputParams["evi"],
+            "route-target": inputParams["route-target"],
+          };
+        }
+        servicesParams.push(payload);
+      }
+      payload["L3VPNconnected:L3VPNconnected"] = servicesParams;
+    } else if (selectedService === "L2L3") {
+      for (let i = 0; i < inputParams.scale; i++) {
+        let deviceContainer = { NPE: { devices: [] }, UPE: { devices: [] }, ACC: { devices: [] } };
+        for (let device of inputParams.devices) {
+          let tmpDevice = { ...device };
+          let deviceType = tmpDevice.type;
+          delete tmpDevice.type;
+          deviceContainer[deviceType].devices.push({ ...tmpDevice });
+        }
+        servicesParams.push({
+          name: `${inputParams["service-id"]}_${i}`,
+          "common-param": {
+            "pe-vlan": parseInt(inputParams["pe-vlan"]) + i,
+            vrf: `${inputParams["vrf"]}_${parseInt(inputParams["pe-vlan"]) + i}`,
+            rt: `100:${parseInt(inputParams["rt"].split(":")[1]) + i}`,
+          },
+          ...deviceContainer,
+        });
+      }
+      payload["L2L3:L2L3"] = servicesParams;
     }
     return payload;
   };
@@ -246,6 +313,30 @@ const ServiceNew = (props) => {
         devices: inputParams.devices,
       };
     } else if (selectedService === "L3VPNSTATIC") {
+      data = {
+        payload: payloadCreator(),
+        status: "active",
+        type: selectedService.toLowerCase(),
+        scale: inputParams.scale,
+        name: inputParams["service-id"],
+        st_vlan: inputParams["vlan-id"],
+        rt: inputParams["rt"],
+        vrf: inputParams["vrf"],
+        devices: inputParams.devices,
+      };
+    } else if (selectedService === "L3VPNCONNECTED") {
+      data = {
+        payload: payloadCreator(),
+        status: "active",
+        type: selectedService.toLowerCase(),
+        scale: inputParams.scale,
+        name: inputParams["service-id"],
+        st_vlan: inputParams["vlan-id"],
+        rt: inputParams["rt"],
+        vrf: inputParams["vrf"],
+        devices: inputParams.devices,
+      };
+    } else if (selectedService === "L2L3") {
       data = {
         payload: payloadCreator(),
         status: "active",
@@ -343,6 +434,17 @@ const ServiceNew = (props) => {
         devices={devices}
       />
     ),
+    L3VPNCONNECTED: (
+      <FormL3VPNCONNECTED
+        onChange={onInputChangeHandler}
+        inputParams={inputParams}
+        onDeviceAdd={onDeviceAddHandler}
+        devices={devices}
+      />
+    ),
+    L2L3: (
+      <FormL2L3 onChange={onInputChangeHandler} inputParams={inputParams} onDeviceAdd={onDeviceAddHandler} devices={devices} />
+    ),
   };
   const dryrunSection = (
     <div className="card my-3">
@@ -399,9 +501,10 @@ const ServiceNew = (props) => {
                         <Form.Control as="select" value={selectedService} onChange={onServiceChangeHandler}>
                           <option value="VPWS">VPWS</option>
                           <option value="ELAN">ELAN</option>
+                          <option value="L2L3">L2+L3</option>
                           <option value="L3VPNBGP">L3VPN BGP</option>
                           <option value="L3VPNSTATIC">L3VPN Static</option>
-                          <option value="L3VPNCONNTECTED">L3VPN Connected</option>
+                          <option value="L3VPNCONNECTED">L3VPN Connected</option>
                         </Form.Control>
                       </Form.Group>
                       <Form.Group as={Col} md="2" sm="3" controlId="scale">
