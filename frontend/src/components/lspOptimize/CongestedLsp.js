@@ -56,15 +56,12 @@ const CongestedLsp = (props) => {
         "exclude-vip-tunnels": "true",
         "create-new-lsps": "false",
         "action-type": "dry-run",
-        "perform-opt-on": "bw-slice",
+        "perform-opt-on": "special-slice",
       },
     };
     let resp = await WAE_API.post(
-      "/api/running/networks/network/ais-demands/opm/hybrid-optimizer/bandwidth/_operations",
+      "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
       payload,
-      {
-        headers: { "Content-type": "application/vnd.yang.data+json" },
-      },
     );
     if (resp.status === 200) {
       setOptimizeResult(resp.data);

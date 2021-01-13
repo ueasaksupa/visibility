@@ -74,7 +74,7 @@ const LspOptimize = (props) => {
                 onChange={(e) => setSelectedSlice(e.target.value)}
                 value={selectedSlice}
               >
-                <option value="bandwidth-slice">Bandwidth Slice</option>
+                <option value="bw-slice">Bandwidth Slice</option>
                 <option value="latency-slice">Latency Slice</option>
                 <option value="special-slice">Special Slice</option>
               </select>
