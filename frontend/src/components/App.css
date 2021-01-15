@@ -234,6 +234,6 @@ tr.lsp-detail.active {
   visibility: collapse;
 }
 
-ul.service-list {
+/* ul.service-list {
   list-style-type: none;
-}
+} */

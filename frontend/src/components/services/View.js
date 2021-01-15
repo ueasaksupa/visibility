@@ -21,6 +21,7 @@ const ServiceView = (props) => {
   const findNumberOfSelectService = () => {
     let num = 0;
     selectedService.forEach((ele) => {
+      // console.log(ele);
       num += ele.payload[`${ele.type}:${ele.type}`].length;
     });
     return num;
@@ -53,7 +54,7 @@ const ServiceView = (props) => {
           setDeleteProgress((deleteProgress) => [...deleteProgress, service["service-id"]]);
         });
       }
-      BACKEND.delete(`/services/${type}/${ele.name}`).then((response) => {
+      BACKEND.delete(`/services/${type.toLowerCase()}/${ele.name}`).then((response) => {
         console.log("delete service: ", ele.name);
       });
     }
@@ -67,7 +68,9 @@ const ServiceView = (props) => {
         await NSO_API.post(`/restconf/data/${type}:${type}=${service["service-id"]}/${action}`);
         console.log(`${action} service: `, service["service-id"]);
       }
-      await BACKEND.patch(`/services/${type}/${ele.name}`, { changeStatusTo: action === "re-deploy" ? "active" : action });
+      await BACKEND.patch(`/services/${type.toLowerCase()}/${ele.name}`, {
+        changeStatusTo: action === "re-deploy" ? "active" : action,
+      });
       console.log(`${action} service: `, ele.name);
     }
     setProcessing(null);
@@ -75,12 +78,25 @@ const ServiceView = (props) => {
   };
 
   const fetchServices = (e) => {
-    const serviceList = ["vpws", "elan"];
+    const serviceList = ["vpws", "elan", "l3vpnbgp", "l3vpnconnected", "l3vpnstatic", "l2l3"];
     serviceList.forEach((ele) => {
       BACKEND.get(`/services/${ele}`).then((response) => {
         setCurrentService((currentService) => ({ ...currentService, [ele]: response.data.response }));
       });
     });
+  };
+
+  const countServiceStatus = (service) => {
+    let output = { active: 0, inactive: 0 };
+    if (typeof currentService[service] !== "object") return output;
+    for (let ele of currentService[service]) {
+      if (ele.status === "active") {
+        output.active = output.active + 1;
+      } else {
+        output.inactive = output.inactive + 1;
+      }
+    }
+    return output;
   };
 
   const renderVpwsTableBody = () => {
@@ -130,6 +146,27 @@ const ServiceView = (props) => {
     });
   };
 
+  const renderL3TableBody = (service) => {
+    if (!currentService[service]) return null;
+    return currentService[service].map((ele, index) => {
+      return (
+        <tr key={index}>
+          <td>
+            <input id="serviceSelectBox" onChange={(e) => handleOnCheckBoxClick(e, ele)} type="checkbox"></input>
+          </td>
+          <td>
+            {" "}
+            <Badge variant={ele.status === "active" ? "primary" : "secondary"}>{ele.status}</Badge>
+          </td>
+          <td>{ele.name}</td>
+          <td>{ele.scale === 1 ? ele.st_vlan : `${ele.st_vlan}-${parseInt(ele.st_vlan) + parseInt(ele.scale) - 1}`}</td>
+          <td>{ele.rt}</td>
+          <td>{ele.vrf}</td>
+        </tr>
+      );
+    });
+  };
+
   useEffect(() => {
     fetchServices();
   }, []);
@@ -141,16 +178,56 @@ const ServiceView = (props) => {
           <div className="h3">Services</div>
         </div>
         <div className="container-fluid">
-          L2vpn
-          <ul className="service-list">
-            <li>E-LAN</li>
-            <li>VPWS</li>
+          <div>L2VPN</div>
+          <ul className="list-group mb-3">
+            <li className="list-group-item d-flex justify-content-between align-items-center">
+              E-LAN
+              <div>
+                <span className="badge badge-primary mr-1">{countServiceStatus("elan").active}</span>
+                <span className="badge badge-secondary mr-1">{countServiceStatus("elan").inactive}</span>
+              </div>
+            </li>
+            <li className="list-group-item d-flex justify-content-between align-items-center">
+              VPWS
+              <div>
+                <span className="badge badge-primary mr-1">{countServiceStatus("vpws").active}</span>
+                <span className="badge badge-secondary mr-1">{countServiceStatus("vpws").inactive}</span>
+              </div>
+            </li>
           </ul>
-          L3VPN
-          <ul className="service-list">
-            <li>Static</li>
-            <li>Connected</li>
-            <li>BGP</li>
+          <div>L3VPN</div>
+          <ul className="list-group mb-3">
+            <li className="list-group-item d-flex justify-content-between align-items-center">
+              Static
+              <div>
+                <span className="badge badge-primary mr-1">{countServiceStatus("l3vpnstatic").active}</span>
+                <span className="badge badge-secondary mr-1">{countServiceStatus("l3vpnstatic").inactive}</span>
+              </div>
+            </li>
+            <li className="list-group-item d-flex justify-content-between align-items-center">
+              Connected
+              <div>
+                <span className="badge badge-primary mr-1">{countServiceStatus("l3vpnconnected").active}</span>
+                <span className="badge badge-secondary mr-1">{countServiceStatus("l3vpnconnected").inactive}</span>
+              </div>
+            </li>
+            <li className="list-group-item d-flex justify-content-between align-items-center">
+              BGP
+              <div>
+                <span className="badge badge-primary mr-1">{countServiceStatus("l3vpnbgp").active}</span>
+                <span className="badge badge-secondary mr-1">{countServiceStatus("l3vpnbgp").inactive}</span>
+              </div>
+            </li>
+          </ul>
+          <div>L2L3</div>
+          <ul className="list-group mb-3">
+            <li className="list-group-item d-flex justify-content-between align-items-center">
+              L2L3
+              <div>
+                <span className="badge badge-primary mr-1">{countServiceStatus("l2l3").active}</span>
+                <span className="badge badge-secondary mr-1">{countServiceStatus("l2l3").inactive}</span>
+              </div>
+            </li>
           </ul>
         </div>
       </div>
@@ -228,6 +305,70 @@ const ServiceView = (props) => {
                 </tr>
               </thead>
               <tbody>{renderElanTableBody()}</tbody>
+            </Table>
+          </div>
+          <div className="h6">L3VPN BGP</div>
+          <div style={{ overflowX: "auto", whiteSpace: "nowrap" }}>
+            <Table striped bordered hover size="sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>status</th>
+                  <th>Service</th>
+                  <th>Vlan</th>
+                  <th>RT</th>
+                  <th>VRF</th>
+                </tr>
+              </thead>
+              <tbody>{renderL3TableBody("l3vpnbgp")}</tbody>
+            </Table>
+          </div>
+          <div className="h6">L3VPN Static</div>
+          <div style={{ overflowX: "auto", whiteSpace: "nowrap" }}>
+            <Table striped bordered hover size="sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>status</th>
+                  <th>Service</th>
+                  <th>Vlan</th>
+                  <th>RT</th>
+                  <th>VRF</th>
+                </tr>
+              </thead>
+              <tbody>{renderL3TableBody("l3vpnstatic")}</tbody>
+            </Table>
+          </div>
+          <div className="h6">L3VPN Connected</div>
+          <div style={{ overflowX: "auto", whiteSpace: "nowrap" }}>
+            <Table striped bordered hover size="sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>status</th>
+                  <th>Service</th>
+                  <th>Vlan</th>
+                  <th>RT</th>
+                  <th>VRF</th>
+                </tr>
+              </thead>
+              <tbody>{renderL3TableBody("l3vpnconnected")}</tbody>
+            </Table>
+          </div>
+          <div className="h6">L2L3 service</div>
+          <div style={{ overflowX: "auto", whiteSpace: "nowrap" }}>
+            <Table striped bordered hover size="sm">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>status</th>
+                  <th>Service</th>
+                  <th>Vlan</th>
+                  <th>RT</th>
+                  <th>VRF</th>
+                </tr>
+              </thead>
+              <tbody>{renderL3TableBody("l2l3")}</tbody>
             </Table>
           </div>
         </div>

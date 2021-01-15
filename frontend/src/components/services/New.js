@@ -41,7 +41,7 @@ const NavLinkData = (props) => {
 const ServiceNew = (props) => {
   const [devices, setDevices] = useState([]);
   const [modalShow, setModalShow] = useState(false);
-  const [selectedService, setSelectedService] = useState("L3VPNCONNECTED");
+  const [selectedService, setSelectedService] = useState("L3VPNBGP");
   const [processingDryrun, setProcessingDryrun] = useState(false);
   const [isDeployComplete, setIsDeployComplete] = useState(false);
   const [dryrunResponse, setDryrunResponse] = useState(null);
@@ -232,7 +232,7 @@ const ServiceNew = (props) => {
           deviceContainer[deviceType].devices.push({ ...tmpDevice });
         }
         servicesParams.push({
-          name: `${inputParams["service-id"]}_${i}`,
+          "service-id": `${inputParams["service-id"]}_${i}`,
           "common-param": {
             "pe-vlan": parseInt(inputParams["pe-vlan"]) + i,
             vrf: `${inputParams["vrf"]}_${parseInt(inputParams["pe-vlan"]) + i}`,
@@ -275,7 +275,7 @@ const ServiceNew = (props) => {
       data = {
         payload: payloadCreator(),
         status: "active",
-        type: selectedService.toLowerCase(),
+        type: "vpws",
         scale: inputParams.scale,
         name: inputParams["service-id"],
         st_vlan: inputParams["vlan-id"],
@@ -290,7 +290,7 @@ const ServiceNew = (props) => {
       data = {
         payload: payloadCreator(),
         status: "active",
-        type: selectedService.toLowerCase(),
+        type: "elan",
         scale: inputParams.scale,
         name: inputParams["service-id"],
         st_vlan: inputParams["vlan-id"],
@@ -304,10 +304,10 @@ const ServiceNew = (props) => {
       data = {
         payload: payloadCreator(),
         status: "active",
-        type: selectedService.toLowerCase(),
+        type: "L3VPNbgp",
         scale: inputParams.scale,
         name: inputParams["service-id"],
-        st_vlan: inputParams["vlan-id"],
+        st_vlan: inputParams["pe-vlan"],
         rt: inputParams["rt"],
         vrf: inputParams["vrf"],
         devices: inputParams.devices,
@@ -316,10 +316,10 @@ const ServiceNew = (props) => {
       data = {
         payload: payloadCreator(),
         status: "active",
-        type: selectedService.toLowerCase(),
+        type: "L3VPNstatic",
         scale: inputParams.scale,
         name: inputParams["service-id"],
-        st_vlan: inputParams["vlan-id"],
+        st_vlan: inputParams["pe-vlan"],
         rt: inputParams["rt"],
         vrf: inputParams["vrf"],
         devices: inputParams.devices,
@@ -328,10 +328,10 @@ const ServiceNew = (props) => {
       data = {
         payload: payloadCreator(),
         status: "active",
-        type: selectedService.toLowerCase(),
+        type: "L3VPNconnected",
         scale: inputParams.scale,
         name: inputParams["service-id"],
-        st_vlan: inputParams["vlan-id"],
+        st_vlan: inputParams["pe-vlan"],
         rt: inputParams["rt"],
         vrf: inputParams["vrf"],
         devices: inputParams.devices,
@@ -340,10 +340,10 @@ const ServiceNew = (props) => {
       data = {
         payload: payloadCreator(),
         status: "active",
-        type: selectedService.toLowerCase(),
+        type: "L2L3",
         scale: inputParams.scale,
         name: inputParams["service-id"],
-        st_vlan: inputParams["vlan-id"],
+        st_vlan: inputParams["pe-vlan"],
         rt: inputParams["rt"],
         vrf: inputParams["vrf"],
         devices: inputParams.devices,
