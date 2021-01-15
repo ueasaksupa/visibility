@@ -1,16 +1,27 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import Form from "react-bootstrap/Form";
 import Col from "react-bootstrap/Col";
 import Table from "react-bootstrap/Table";
 
 import { NSO_API } from "../api/apiBackend";
 
-const FormELAN = (props) => {
+const FormELAN = forwardRef((props, ref) => {
   let deviceOption = [<option key="0">-</option>];
-  const [intfNumberSelector1, setIntfNumberSelector1] = useState(null);
+  const [devices, setDevices] = useState([]);
+  const [intfNumberSelector, setIntfNumberSelector] = useState(null);
+  //
   const [currentIntfType, setCurrentIntfType] = useState("TenGigE");
   const [currentIntfNumber, setCurrentIntfNumber] = useState("-");
   const [currentDevice, setCurrentDevice] = useState("-");
+  //
+  const [inputCommon, setInputCommon] = useState({
+    "service-id": "",
+    "vlan-id": "",
+    "evpn-evi": "",
+    "evpn-rt": "",
+    "bridge-domain": "",
+    "bridge-group": "",
+  });
 
   deviceOption = [
     ...deviceOption,
@@ -18,6 +29,40 @@ const FormELAN = (props) => {
       return <option key={index + 1}>{deviceName}</option>;
     }),
   ];
+
+  useImperativeHandle(ref, () => ({
+    createPayload() {
+      const servicesParams = [];
+      const payload = {};
+      for (let i = 0; i < props.scale; i++) {
+        servicesParams.push({
+          "service-id": `${inputCommon["service-id"]}_${i}`,
+          "common-param": {
+            "vlan-id": parseInt(inputCommon["vlan-id"]) + i,
+            "evpn-evi": parseInt(inputCommon["evpn-evi"]) + i,
+            "evpn-rt": inputCommon["evpn-rt"],
+            "bridge-domain": inputCommon["bridge-domain"],
+            "bridge-group": inputCommon["bridge-group"],
+          },
+          "device-specific": {
+            devices: [...devices],
+          },
+        });
+      }
+      payload["elan:elan"] = servicesParams;
+      return payload;
+    },
+  }));
+
+  const onDeviceAddHandler = (object, action = "add") => {
+    if (action === "add") {
+      setDevices([...devices, object]);
+    } else if (action === "delete") {
+      let tmpDevice = [...devices];
+      tmpDevice.splice(object, 1);
+      setDevices([...tmpDevice]);
+    }
+  };
 
   useEffect(() => {
     const fetchInterfaceId = () => {
@@ -27,14 +72,14 @@ const FormELAN = (props) => {
         ).then((response) => {
           console.log("1: ", response);
           if (response.status === 200) {
-            setIntfNumberSelector1([
+            setIntfNumberSelector([
               <option key="0">-</option>,
               ...response.data[`tailf-ned-cisco-ios-xr:${currentIntfType}`].map((ele, index) => {
                 return <option key={index + 1}>{ele.id}</option>;
               }),
             ]);
           } else {
-            setIntfNumberSelector1(null);
+            setIntfNumberSelector(null);
           }
         });
       }
@@ -43,8 +88,8 @@ const FormELAN = (props) => {
   }, [currentDevice, currentIntfType]);
 
   const renderDeviceTableBody = () => {
-    if (props.inputParams.devices.length !== 0) {
-      return props.inputParams.devices.map((row, index) => {
+    if (devices.length !== 0) {
+      return devices.map((row, index) => {
         return (
           <tr key={index}>
             <td>{row.device}</td>
@@ -56,7 +101,7 @@ const FormELAN = (props) => {
                 className="btn btn-danger btn-sm"
                 onClick={(e) => {
                   e.preventDefault();
-                  props.onDeviceAdd(index, "delete");
+                  onDeviceAddHandler(index, "delete");
                 }}
               >
                 <i className="fas fa-trash-alt" />
@@ -86,8 +131,8 @@ const FormELAN = (props) => {
             required
             type="text"
             placeholder="eline service"
-            onChange={props.onChange}
-            value={props.inputParams["service-id"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["service-id"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="vlan-id">
@@ -96,28 +141,48 @@ const FormELAN = (props) => {
             required
             type="text"
             placeholder="vlan number"
-            onChange={props.onChange}
-            value={props.inputParams["vlan-id"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["vlan-id"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="evpn-evi">
           <Form.Label>Start EVI Number</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["evpn-evi"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["evpn-evi"]}
+          />
         </Form.Group>
       </Form.Row>
       {/*  */}
       <Form.Row>
         <Form.Group as={Col} controlId="evpn-rt">
           <Form.Label>RT</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["evpn-rt"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["evpn-rt"]}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="bridge-group">
           <Form.Label>bridge-group</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["bridge-group"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["bridge-group"]}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="bridge-domain">
           <Form.Label>bridge-domain</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["bridge-domain"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["bridge-domain"]}
+          />
         </Form.Group>
       </Form.Row>
       {/*  */}
@@ -153,7 +218,7 @@ const FormELAN = (props) => {
         <Form.Group as={Col} md="2" controlId="intfNumber">
           <Form.Label>Number</Form.Label>
           <Form.Control as="select" onChange={(e) => setCurrentIntfNumber(e.target.value)} value={currentIntfNumber}>
-            {intfNumberSelector1 ? intfNumberSelector1 : <option>-</option>}
+            {intfNumberSelector ? intfNumberSelector : <option>-</option>}
           </Form.Control>
         </Form.Group>
         <button
@@ -161,7 +226,7 @@ const FormELAN = (props) => {
           className="bg-blue btn btn-primary btn-sm mb-3"
           onClick={(e) => {
             e.preventDefault();
-            props.onDeviceAdd({
+            onDeviceAddHandler({
               device: currentDevice,
               "interface-type": currentIntfType,
               [`${currentIntfType}-id`]: currentIntfNumber,
@@ -183,6 +248,6 @@ const FormELAN = (props) => {
       </Table>
     </>
   );
-};
+});
 
 export default FormELAN;

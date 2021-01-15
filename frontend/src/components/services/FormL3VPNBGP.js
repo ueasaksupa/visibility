@@ -1,19 +1,63 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import Form from "react-bootstrap/Form";
 import Col from "react-bootstrap/Col";
 import Table from "react-bootstrap/Table";
 
 import { NSO_API } from "../api/apiBackend";
 
-const FormL3VPNBGP = (props) => {
+const FormL3VPNBGP = forwardRef((props, ref) => {
   let deviceOption = [<option key="0">-</option>];
-  const [intfNumberSelector1, setIntfNumberSelector1] = useState(null);
+  const [devices, setDevices] = useState([
+    {
+      "device-type": "NPE1",
+      device: "AGG3_NPE1",
+      "interface-type": "HundredGigE",
+      "HundredGigE-id": "0/0/0/3",
+      "pe-ipv4-gw": "13.0.1.5/30",
+    },
+    {
+      "device-type": "NPE2",
+      device: "AGG4_NPE2",
+      "interface-type": "HundredGigE",
+      "HundredGigE-id": "0/0/0/3",
+      "pe-ipv4-gw": "13.0.1.5/30",
+    },
+    {
+      "device-type": "UPE1",
+      device: "AGG1_UPE1",
+    },
+    {
+      "device-type": "UPE2",
+      device: "AGG2_UPE2",
+    },
+    {
+      "device-type": "ACC",
+      device: "ncs540-5",
+      "interface-type": "TenGigE",
+      "TenGigE-id": "0/0/0/3",
+      "pe-ipv4-gw": "14.0.1.5/30",
+      acc_vlan: 1541,
+    },
+  ]);
+  const [intfNumberSelector, setIntfNumberSelector] = useState(null);
+  //
   const [currentIntfType, setCurrentIntfType] = useState("TenGigE");
   const [currentIntfNumber, setCurrentIntfNumber] = useState("-");
   const [currentDevice, setCurrentDevice] = useState("-");
   const [currentDeviceType, setCurrentDeviceType] = useState("ACC");
   const [currentIpGW, setCurrentIpGW] = useState("");
   const [currentAccVlan, setCurrentAccVlan] = useState("");
+  //
+  const [inputCommon, setInputCommon] = useState({
+    "service-id": "L3_BGP_BG_BW1541",
+    vrf: "L3_BGP_BG_BW1541",
+    rt: "100:1541",
+    "pe-vlan": 1541,
+    slice: "NPE-ACC-BW",
+    neighbor: "13.0.1.2",
+    neighbor1: "13.0.1.6",
+    neighbor2: "14.0.1.2",
+  });
 
   deviceOption = [
     ...deviceOption,
@@ -21,6 +65,49 @@ const FormL3VPNBGP = (props) => {
       return <option key={index + 1}>{deviceName}</option>;
     }),
   ];
+
+  useImperativeHandle(ref, () => ({
+    createPayload() {
+      const servicesParams = [];
+      const payload = {};
+      const scale = 1;
+      let slice_container =
+        inputCommon["slice"].includes("BW") || inputCommon["slice"].includes("LT") ? "NPE-ACC-BW-LT" : inputCommon["slice"];
+      for (let i = 0; i < scale; i++) {
+        servicesParams.push({
+          "service-id": `${inputCommon["service-id"]}_${i}`,
+          "l3vpn-connected-type": inputCommon["slice"],
+          "common-param": {
+            "pe-vlan": parseInt(inputCommon["pe-vlan"]) + i,
+            vrf: `${inputCommon["vrf"]}_${parseInt(inputCommon["pe-vlan"]) + i}`,
+            rt: `100:${parseInt(inputCommon["rt"].split(":")[1]) + i}`,
+          },
+          [slice_container]: {
+            devices: [...devices],
+            "npe-router-bgp": {
+              neighbor: inputCommon["neighbor"],
+              neighbor1: inputCommon["neighbor1"],
+            },
+            "acc-router-bgp": {
+              neighbor2: inputCommon["neighbor2"],
+            },
+          },
+        });
+      }
+      payload["L3VPNbgp:L3VPNbgp"] = servicesParams;
+      return payload;
+    },
+  }));
+
+  const onDeviceAddHandler = (object, action = "add") => {
+    if (action === "add") {
+      setDevices([...devices, object]);
+    } else if (action === "delete") {
+      let tmpDevice = [...devices];
+      tmpDevice.splice(object, 1);
+      setDevices([...tmpDevice]);
+    }
+  };
 
   useEffect(() => {
     // Do fetch new interface id belonging to selected device and interface type
@@ -31,14 +118,14 @@ const FormL3VPNBGP = (props) => {
         ).then((response) => {
           console.log("1: ", response);
           if (response.status === 200) {
-            setIntfNumberSelector1([
+            setIntfNumberSelector([
               <option key="0">-</option>,
               ...response.data[`tailf-ned-cisco-ios-xr:${currentIntfType}`].map((ele, index) => {
                 return <option key={index + 1}>{ele.id}</option>;
               }),
             ]);
           } else {
-            setIntfNumberSelector1(null);
+            setIntfNumberSelector(null);
           }
         });
       }
@@ -48,8 +135,8 @@ const FormL3VPNBGP = (props) => {
   }, [currentDevice, currentIntfType]);
 
   const renderDeviceTableBody = () => {
-    if (props.inputParams.devices.length !== 0) {
-      return props.inputParams.devices.map((row, index) => {
+    if (devices.length !== 0) {
+      return devices.map((row, index) => {
         return (
           <tr key={index}>
             <td>{row["device-type"]}</td>
@@ -64,7 +151,7 @@ const FormL3VPNBGP = (props) => {
                 className="btn btn-danger btn-sm"
                 onClick={(e) => {
                   e.preventDefault();
-                  props.onDeviceAdd(index, "delete");
+                  onDeviceAddHandler(index, "delete");
                 }}
               >
                 <i className="fas fa-trash-alt" />
@@ -94,8 +181,8 @@ const FormL3VPNBGP = (props) => {
             required
             type="text"
             placeholder="service name"
-            onChange={props.onChange}
-            value={props.inputParams["service-id"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["service-id"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="pe-vlan">
@@ -104,25 +191,39 @@ const FormL3VPNBGP = (props) => {
             required
             type="text"
             placeholder="vlan number"
-            onChange={props.onChange}
-            value={props.inputParams["pe-vlan"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["pe-vlan"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="rt">
           <Form.Label>RT</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["rt"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["rt"]}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="vrf">
           <Form.Label>
             VRF<small className="mx-2">(Automatically append VLAN number)</small>
           </Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["vrf"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["vrf"]}
+          />
         </Form.Group>
       </Form.Row>
       <Form.Row>
         <Form.Group as={Col} md="3" controlId="slice">
           <Form.Label>Slice</Form.Label>
-          <Form.Control as="select" onChange={props.onChange} value={props.inputParams["slice"]}>
+          <Form.Control
+            as="select"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["slice"]}
+          >
             <option value="NPE-ACC-BW">Bandwidth</option>
             <option value="NPE-ACC-LT">Latency</option>
             <option value="NPE-ACC-SP">Special</option>
@@ -130,15 +231,30 @@ const FormL3VPNBGP = (props) => {
         </Form.Group>
         <Form.Group as={Col} md="3" controlId="neighbor">
           <Form.Label>NPE1 BGP Neighbor</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["neighbor"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["neighbor"]}
+          />
         </Form.Group>
         <Form.Group as={Col} md="3" controlId="neighbor1">
           <Form.Label>NPE2 BGP Neighbor</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["neighbor1"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["neighbor1"]}
+          />
         </Form.Group>
         <Form.Group as={Col} md="3" controlId="neighbor2">
           <Form.Label>ACC BGP Neighbor</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["neighbor2"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["neighbor2"]}
+          />
         </Form.Group>
       </Form.Row>
       {/*  */}
@@ -187,7 +303,7 @@ const FormL3VPNBGP = (props) => {
           <Form.Group as={Col} md="2" controlId="intfNumber">
             <Form.Label>Number</Form.Label>
             <Form.Control as="select" onChange={(e) => setCurrentIntfNumber(e.target.value)} value={currentIntfNumber}>
-              {intfNumberSelector1 ? intfNumberSelector1 : <option>-</option>}
+              {intfNumberSelector ? intfNumberSelector : <option>-</option>}
             </Form.Control>
           </Form.Group>
         )}
@@ -195,7 +311,6 @@ const FormL3VPNBGP = (props) => {
           <Form.Group as={Col} md="2" controlId="gatewayIp">
             <Form.Label>IPv4 Gateway</Form.Label>
             <Form.Control
-              required
               type="text"
               placeholder="0.0.0.0/30"
               onChange={(e) => setCurrentIpGW(e.target.value)}
@@ -206,7 +321,7 @@ const FormL3VPNBGP = (props) => {
         {currentDeviceType === "ACC" && (
           <Form.Group as={Col} md="2" controlId="acc_vlan">
             <Form.Label>Access Vlan</Form.Label>
-            <Form.Control required type="text" onChange={(e) => setCurrentAccVlan(e.target.value)} value={currentAccVlan} />
+            <Form.Control type="text" onChange={(e) => setCurrentAccVlan(e.target.value)} value={currentAccVlan} />
           </Form.Group>
         )}
         <button
@@ -215,7 +330,7 @@ const FormL3VPNBGP = (props) => {
           onClick={(e) => {
             e.preventDefault();
             if (currentDeviceType === "ACC") {
-              props.onDeviceAdd({
+              onDeviceAddHandler({
                 "device-type": currentDeviceType,
                 device: currentDevice,
                 "interface-type": currentIntfType,
@@ -224,7 +339,7 @@ const FormL3VPNBGP = (props) => {
                 acc_vlan: currentAccVlan,
               });
             } else if (currentDeviceType.includes("NPE")) {
-              props.onDeviceAdd({
+              onDeviceAddHandler({
                 "device-type": currentDeviceType,
                 device: currentDevice,
                 "interface-type": currentIntfType,
@@ -232,7 +347,7 @@ const FormL3VPNBGP = (props) => {
                 "pe-ipv4-gw": currentIpGW,
               });
             } else if (currentDeviceType.includes("UPE")) {
-              props.onDeviceAdd({
+              onDeviceAddHandler({
                 "device-type": currentDeviceType,
                 device: currentDevice,
               });
@@ -257,6 +372,6 @@ const FormL3VPNBGP = (props) => {
       </Table>
     </>
   );
-};
+});
 
 export default FormL3VPNBGP;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import Form from "react-bootstrap/Form";
 import Col from "react-bootstrap/Col";
@@ -41,217 +41,29 @@ const NavLinkData = (props) => {
 const ServiceNew = (props) => {
   const [devices, setDevices] = useState([]);
   const [modalShow, setModalShow] = useState(false);
-  const [selectedService, setSelectedService] = useState("L3VPNBGP");
+  const [selectedService, setSelectedService] = useState("L3VPNCONNECTED");
   const [processingDryrun, setProcessingDryrun] = useState(false);
   const [isDeployComplete, setIsDeployComplete] = useState(false);
   const [dryrunResponse, setDryrunResponse] = useState(null);
   const [errMsg, setErrMsg] = useState(null);
   const history = useHistory();
+  const formRef = useRef();
 
   const [inputParams, setInputParams] = useState({
     devices: [],
     scale: 1,
-    "service-id": "TEST",
-    "vlan-id": "1000",
-    "evpn-evi": "1000",
-    //
-    labelPE: "1020",
-    labelACC: "1020",
-    "x-connect-group": "vpws-bg-bw",
-    "p2p-domain": "eline-bg-bw",
-    //
-    "evpn-rt": "1111",
-    "bridge-group": "elan-bg-bw",
-    "bridge-domain": "elan",
-    // L3VPN
-    "pe-vlan": "1546",
-    vrf: "L3_BGP_BG",
-    rt: "100:1546",
-    slice: "NPE-ACC-BW",
-    // BGP
-    neighbor: "1.1.1.1",
-    neighbor1: "2.2.2.2",
-    neighbor2: "3.3.3.3",
-    // connected
-    "auto-rd": "",
   });
 
   const scrollToBottom = () => window.scrollTo(0, document.body.scrollHeight);
 
-  const payloadCreator = () => {
-    const servicesParams = [];
-    const payload = {};
-    if (selectedService === "VPWS") {
-      for (let i = 0; i < inputParams.scale; i++) {
-        servicesParams.push({
-          "service-id": `${inputParams["service-id"]}_${i}`,
-          "common-param": {
-            "vlan-id": parseInt(inputParams["vlan-id"]) + i,
-            "evpn-evi": parseInt(inputParams["evpn-evi"]) + i,
-            "x-connect-group": inputParams["x-connect-group"],
-            "p2p-domain": inputParams["p2p-domain"],
-          },
-          "device-specific": {
-            devices: inputParams.devices,
-          },
-        });
-      }
-      payload["vpws:vpws"] = servicesParams;
-    } else if (selectedService === "ELAN") {
-      for (let i = 0; i < inputParams.scale; i++) {
-        servicesParams.push({
-          "service-id": `${inputParams["service-id"]}_${i}`,
-          "common-param": {
-            "vlan-id": parseInt(inputParams["vlan-id"]) + i,
-            "evpn-evi": parseInt(inputParams["evpn-evi"]) + i,
-            "evpn-rt": inputParams["evpn-rt"],
-            "bridge-domain": inputParams["bridge-domain"],
-            "bridge-group": inputParams["bridge-group"],
-          },
-          "device-specific": {
-            devices: inputParams.devices,
-          },
-        });
-      }
-      payload["elan:elan"] = servicesParams;
-    } else if (selectedService === "L3VPNBGP") {
-      let slice_container =
-        inputParams["slice"].includes("BW") || inputParams["slice"].includes("LT") ? "NPE-ACC-BW-LT" : inputParams["slice"];
-      for (let i = 0; i < inputParams.scale; i++) {
-        servicesParams.push({
-          "service-id": `${inputParams["service-id"]}_${i}`,
-          "l3vpn-connected-type": inputParams["slice"],
-          "common-param": {
-            "pe-vlan": parseInt(inputParams["pe-vlan"]) + i,
-            vrf: `${inputParams["vrf"]}_${parseInt(inputParams["pe-vlan"]) + i}`,
-            rt: `100:${parseInt(inputParams["rt"].split(":")[1]) + i}`,
-          },
-          [slice_container]: {
-            devices: inputParams.devices,
-            "npe-router-bgp": {
-              neighbor: inputParams["neighbor"],
-              neighbor1: inputParams["neighbor1"],
-            },
-            "acc-router-bgp": {
-              neighbor2: inputParams["neighbor2"],
-            },
-          },
-        });
-      }
-      payload["L3VPNbgp:L3VPNbgp"] = servicesParams;
-    } else if (selectedService === "L3VPNSTATIC") {
-      let slice_container =
-        inputParams["slice"].includes("BW") || inputParams["slice"].includes("LT") ? "NPE-ACC-BW-LT" : inputParams["slice"];
-      for (let i = 0; i < inputParams.scale; i++) {
-        let isSpecialSlice = inputParams["slice"].includes("SP");
-        let payload = {
-          "service-id": `${inputParams["service-id"]}_${i}`,
-          "l3vpn-connected-type": inputParams["slice"],
-          "common-param": {
-            "pe-vlan": parseInt(inputParams["pe-vlan"]) + i,
-            vrf: `${inputParams["vrf"]}_${parseInt(inputParams["pe-vlan"]) + i}`,
-            rt: `100:${parseInt(inputParams["rt"].split(":")[1]) + i}`,
-          },
-          [slice_container]: {
-            devices: inputParams.devices,
-            "npe-router-static": {
-              "destination-ip": inputParams["destination-ip"],
-              interface: inputParams["interface"],
-              "forward-ip": inputParams["forward-ip"],
-              interface1: inputParams["interface1"],
-              "forward-ip1": inputParams["forward-ip1"],
-            },
-            "acc-router-static": {
-              "destination-ip2": inputParams["destination-ip2"],
-              interface2: inputParams["interface2"],
-              "forward-ip2": inputParams["forward-ip2"],
-            },
-          },
-        };
-        if (isSpecialSlice) {
-          payload[slice_container].BVI = {
-            "bvi-interface": inputParams["bvi-interface"],
-            "bvi-ipv4-address": inputParams["bvi-ipv4-address"],
-            "bvi-mac-address": inputParams["bvi-mac-address"],
-          };
-          payload[slice_container].evpn = {
-            evi: inputParams["evi"],
-            "route-target": inputParams["route-target"],
-          };
-        }
-        servicesParams.push(payload);
-      }
-      payload["L3VPNstatic:L3VPNstatic"] = servicesParams;
-    } else if (selectedService === "L3VPNCONNECTED") {
-      let slice_container =
-        inputParams["slice"].includes("BW") || inputParams["slice"].includes("LT") ? "NPE-ACC-BW-LT" : inputParams["slice"];
-      for (let i = 0; i < inputParams.scale; i++) {
-        let payload = {
-          "service-id": `${inputParams["service-id"]}_${i}`,
-          "l3vpn-connected-type": inputParams["slice"],
-          "common-param": {
-            "pe-vlan": parseInt(inputParams["pe-vlan"]) + i,
-            vrf: `${inputParams["vrf"]}_${parseInt(inputParams["pe-vlan"]) + i}`,
-            rt: `100:${parseInt(inputParams["rt"].split(":")[1]) + i}`,
-            "auto-rd": inputParams["auto-rd"],
-          },
-          [slice_container]: {
-            devices: inputParams.devices,
-          },
-        };
-        if (inputParams["slice"].includes("BW") || inputParams["slice"].includes("LT")) {
-          payload[slice_container]["npe-router-static"] = {
-            "destination-ip": inputParams["destination-ip"],
-            interface: inputParams["interface"],
-            "forward-ip": inputParams["forward-ip"],
-            interface1: inputParams["interface1"],
-            "forward-ip1": inputParams["forward-ip1"],
-          };
-        }
-        if (inputParams["slice"].includes("SP")) {
-          payload[slice_container].BVI = {
-            "bvi-interface": inputParams["bvi-interface"],
-            "bvi-ipv4-address": inputParams["bvi-ipv4-address"],
-            "bvi-mac-address": inputParams["bvi-mac-address"],
-          };
-          payload[slice_container].evpn = {
-            evi: inputParams["evi"],
-            "route-target": inputParams["route-target"],
-          };
-        }
-        servicesParams.push(payload);
-      }
-      payload["L3VPNconnected:L3VPNconnected"] = servicesParams;
-    } else if (selectedService === "L2L3") {
-      for (let i = 0; i < inputParams.scale; i++) {
-        let deviceContainer = { NPE: { devices: [] }, UPE: { devices: [] }, ACC: { devices: [] } };
-        for (let device of inputParams.devices) {
-          let tmpDevice = { ...device };
-          let deviceType = tmpDevice.type;
-          delete tmpDevice.type;
-          deviceContainer[deviceType].devices.push({ ...tmpDevice });
-        }
-        servicesParams.push({
-          "service-id": `${inputParams["service-id"]}_${i}`,
-          "common-param": {
-            "pe-vlan": parseInt(inputParams["pe-vlan"]) + i,
-            vrf: `${inputParams["vrf"]}_${parseInt(inputParams["pe-vlan"]) + i}`,
-            rt: `100:${parseInt(inputParams["rt"].split(":")[1]) + i}`,
-          },
-          ...deviceContainer,
-        });
-      }
-      payload["L2L3:L2L3"] = servicesParams;
-    }
-    return payload;
-  };
+  const payloadCreator = () => {};
 
   const serviceDryRunHandler = async (e) => {
     e.preventDefault();
     setProcessingDryrun(true);
     setDryrunResponse(null);
 
-    let data = payloadCreator();
+    let data = formRef.current.createPayload();
     console.log("payload: ", data);
     try {
       let response = await NSO_API.post("restconf/data?dry-run=native", data);
@@ -369,23 +181,6 @@ const ServiceNew = (props) => {
     }
   };
 
-  const onDeviceAddHandler = (object, action = "add") => {
-    if (action === "add") {
-      setInputParams({
-        ...inputParams,
-        devices: [...inputParams.devices, object],
-      });
-    } else if (action === "delete") {
-      let tmp = inputParams.devices;
-      console.log(object);
-      tmp.splice(object, 1);
-      setInputParams({
-        ...inputParams,
-        devices: [...tmp],
-      });
-    }
-  };
-
   const onInputChangeHandler = (event) => {
     const type = event.target.type;
     const id = event.target.id;
@@ -412,39 +207,12 @@ const ServiceNew = (props) => {
   }, []);
 
   const showForm = {
-    VPWS: (
-      <FormVPWS onChange={onInputChangeHandler} inputParams={inputParams} onDeviceAdd={onDeviceAddHandler} devices={devices} />
-    ),
-    ELAN: (
-      <FormELAN onChange={onInputChangeHandler} inputParams={inputParams} onDeviceAdd={onDeviceAddHandler} devices={devices} />
-    ),
-    L3VPNBGP: (
-      <FormL3VPNBGP
-        onChange={onInputChangeHandler}
-        inputParams={inputParams}
-        onDeviceAdd={onDeviceAddHandler}
-        devices={devices}
-      />
-    ),
-    L3VPNSTATIC: (
-      <FormL3VPNSTATIC
-        onChange={onInputChangeHandler}
-        inputParams={inputParams}
-        onDeviceAdd={onDeviceAddHandler}
-        devices={devices}
-      />
-    ),
-    L3VPNCONNECTED: (
-      <FormL3VPNCONNECTED
-        onChange={onInputChangeHandler}
-        inputParams={inputParams}
-        onDeviceAdd={onDeviceAddHandler}
-        devices={devices}
-      />
-    ),
-    L2L3: (
-      <FormL2L3 onChange={onInputChangeHandler} inputParams={inputParams} onDeviceAdd={onDeviceAddHandler} devices={devices} />
-    ),
+    VPWS: <FormVPWS ref={formRef} devices={devices} scale={inputParams.scale} />,
+    ELAN: <FormELAN ref={formRef} devices={devices} scale={inputParams.scale} />,
+    L3VPNBGP: <FormL3VPNBGP ref={formRef} devices={devices} />,
+    L3VPNSTATIC: <FormL3VPNSTATIC ref={formRef} devices={devices} />,
+    L3VPNCONNECTED: <FormL3VPNCONNECTED ref={formRef} devices={devices} />,
+    L2L3: <FormL2L3 ref={formRef} devices={devices} />,
   };
   const dryrunSection = (
     <div className="card my-3">
@@ -507,10 +275,12 @@ const ServiceNew = (props) => {
                           <option value="L3VPNCONNECTED">L3VPN Connected</option>
                         </Form.Control>
                       </Form.Group>
-                      <Form.Group as={Col} md="2" sm="3" controlId="scale">
-                        <Form.Label>Scale factor</Form.Label>
-                        <Form.Control required type="number" value={inputParams.scale} onChange={onInputChangeHandler} />
-                      </Form.Group>
+                      {!selectedService.includes("L3") && (
+                        <Form.Group as={Col} md="2" sm="3" controlId="scale">
+                          <Form.Label>Scale factor</Form.Label>
+                          <Form.Control required type="number" value={inputParams.scale} onChange={onInputChangeHandler} />
+                        </Form.Group>
+                      )}
                     </Form.Row>
                     {showForm[selectedService]}
                   </div>

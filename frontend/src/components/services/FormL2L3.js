@@ -1,35 +1,37 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import Form from "react-bootstrap/Form";
 import Col from "react-bootstrap/Col";
 import Table from "react-bootstrap/Table";
 
 import { NSO_API } from "../api/apiBackend";
 
-const FormL2L3 = (props) => {
+const FormL2L3 = forwardRef((props, ref) => {
   let deviceOption = [<option key="0">-</option>];
-  const [intfNumberSelector1, setIntfNumberSelector1] = useState(null);
+  const [devices, setDevices] = useState([]);
+  const [intfNumberSelector, setIntfNumberSelector] = useState(null);
+  //
   const [currentIntfType, setCurrentIntfType] = useState("TenGigE");
   const [currentIntfNumber, setCurrentIntfNumber] = useState("-");
   const [currentDevice, setCurrentDevice] = useState("-");
   const [currentDeviceType, setCurrentDeviceType] = useState("NPE");
-  const [currentBgpAs, setCurrentBgpAs] = useState("100");
-  const [inputNPE, setInputNPE] = useState({
-    "bvi-interface": "2222",
-    "bvi-ipv4-address": "22.22.22.22/30",
-    "bvi-mac-address": "2222.2222.2222",
-    "evpn-evi": 2222,
-    "evpn-rt": "2222:2222",
-    "destination-ip": "2.2.2.2/30",
-    interface: "HundredGigE0/0/0/1",
-    "forward-ip": "3.3.3.3",
-  });
-  const [inputUPE, setInputUPE] = useState({ "agg-address": "4.4.4.4/30" });
-  const [inputACC, setInputACC] = useState({
-    "bvi-interface": "2222",
-    "bvi-ipv4-address": "2.2.2.2/30",
-    "bvi-mac-address": "2222.2222.2222",
-    "evpn-evi": 2222,
-    "evpn-rt": "2222:2222",
+  //
+  const [inputCommon, setInputCommon] = useState({ "service-id": "", "pe-vlan": "", rt: "", vrf: "" });
+  const [inputDevice, setInputDevice] = useState({
+    "bgp-as": 100,
+    "npe-bvi-interface": "2222",
+    "npe-bvi-ipv4-address": "222.222.222.222/30",
+    "npe-bvi-mac-address": "2222.2222.2222",
+    "npe-evpn-evi": 2222,
+    "npe-evpn-rt": "2222:2222",
+    "npe-destination-ip": "2.2.2.2/30",
+    "npe-interface": "HundredGigE0/0/0/1",
+    "npe-forward-ip": "22.22.22.22",
+    "upe-agg-address": "4.4.4.4/30",
+    "acc-bvi-interface": "1111",
+    "acc-bvi-ipv4-address": "111.111.111.111/30",
+    "acc-bvi-mac-address": "1111.1111.1111",
+    "acc-evpn-evi": 1111,
+    "acc-evpn-rt": "1111:1111",
   });
 
   deviceOption = [
@@ -38,6 +40,44 @@ const FormL2L3 = (props) => {
       return <option key={index + 1}>{deviceName}</option>;
     }),
   ];
+
+  useImperativeHandle(ref, () => ({
+    createPayload() {
+      const servicesParams = [];
+      const payload = {};
+      const scale = 1;
+      for (let i = 0; i < scale; i++) {
+        let deviceContainer = { NPE: { devices: [] }, UPE: { devices: [] }, ACC: { devices: [] } };
+        for (let device of devices) {
+          let tmpDevice = { ...device };
+          let deviceType = tmpDevice.type;
+          delete tmpDevice.type;
+          deviceContainer[deviceType].devices.push({ ...tmpDevice });
+        }
+        servicesParams.push({
+          "service-id": `${inputCommon["service-id"]}_${i}`,
+          "common-param": {
+            "pe-vlan": parseInt(inputCommon["pe-vlan"]) + i,
+            vrf: `${inputCommon["vrf"]}_${parseInt(inputCommon["pe-vlan"]) + i}`,
+            rt: `100:${parseInt(inputCommon["rt"].split(":")[1]) + i}`,
+          },
+          ...deviceContainer,
+        });
+      }
+      payload["L2L3:L2L3"] = servicesParams;
+      return payload;
+    },
+  }));
+
+  const onDeviceAddHandler = (object, action = "add") => {
+    if (action === "add") {
+      setDevices([...devices, object]);
+    } else if (action === "delete") {
+      let tmpDevice = [...devices];
+      tmpDevice.splice(object, 1);
+      setDevices([...tmpDevice]);
+    }
+  };
 
   useEffect(() => {
     // Do fetch new interface id belonging to selected device and interface type
@@ -48,14 +88,14 @@ const FormL2L3 = (props) => {
         ).then((response) => {
           console.log("1: ", response);
           if (response.status === 200) {
-            setIntfNumberSelector1([
+            setIntfNumberSelector([
               <option key="0">-</option>,
               ...response.data[`tailf-ned-cisco-ios-xr:${currentIntfType}`].map((ele, index) => {
                 return <option key={index + 1}>{ele.id}</option>;
               }),
             ]);
           } else {
-            setIntfNumberSelector1(null);
+            setIntfNumberSelector(null);
           }
         });
       }
@@ -65,8 +105,8 @@ const FormL2L3 = (props) => {
   }, [currentDevice, currentIntfType]);
 
   const renderDeviceTableBody = () => {
-    if (props.inputParams.devices.length !== 0) {
-      return props.inputParams.devices.map((row, index) => {
+    if (devices.length !== 0) {
+      return devices.map((row, index) => {
         return (
           <tr key={index}>
             <td>{row.type}</td>
@@ -80,7 +120,7 @@ const FormL2L3 = (props) => {
                 className="btn btn-danger btn-sm"
                 onClick={(e) => {
                   e.preventDefault();
-                  props.onDeviceAdd(index, "delete");
+                  onDeviceAddHandler(index, "delete");
                 }}
               >
                 <i className="fas fa-trash-alt" />
@@ -111,8 +151,8 @@ const FormL2L3 = (props) => {
             size="sm"
             type="text"
             placeholder="service name"
-            onChange={props.onChange}
-            value={props.inputParams["service-id"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["service-id"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="pe-vlan">
@@ -122,19 +162,31 @@ const FormL2L3 = (props) => {
             size="sm"
             type="text"
             placeholder="vlan number"
-            onChange={props.onChange}
-            value={props.inputParams["pe-vlan"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["pe-vlan"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="rt">
           <Form.Label>RT</Form.Label>
-          <Form.Control size="sm" required type="text" onChange={props.onChange} value={props.inputParams["rt"]} />
+          <Form.Control
+            size="sm"
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["rt"]}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="vrf">
           <Form.Label>
             VRF<small className="mx-2">(Automatically append VLAN number)</small>
           </Form.Label>
-          <Form.Control size="sm" required type="text" onChange={props.onChange} value={props.inputParams["vrf"]} />
+          <Form.Control
+            size="sm"
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["vrf"]}
+          />
         </Form.Group>
       </Form.Row>
       {/*  */}
@@ -189,7 +241,7 @@ const FormL2L3 = (props) => {
                 onChange={(e) => setCurrentIntfNumber(e.target.value)}
                 value={currentIntfNumber}
               >
-                {intfNumberSelector1 ? intfNumberSelector1 : <option>-</option>}
+                {intfNumberSelector ? intfNumberSelector : <option>-</option>}
               </Form.Control>
             </Form.Group>
             <Form.Group as={Col} md="2" controlId="bgp-as">
@@ -199,8 +251,8 @@ const FormL2L3 = (props) => {
                 required
                 type="text"
                 placeholder="100"
-                onChange={(e) => setCurrentBgpAs(e.target.value)}
-                value={currentBgpAs}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["bgp-as"]}
               />
             </Form.Group>
           </>
@@ -210,90 +262,90 @@ const FormL2L3 = (props) => {
         <div className="border rounded p-2 mb-2">
           <div>BVI</div>
           <Form.Row>
-            <Form.Group as={Col} md="2" controlId="bvi-interface" className="m-0">
+            <Form.Group as={Col} md="2" controlId="npe-bvi-interface" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="bvi-interface"
-                onChange={(e) => setInputNPE({ ...inputNPE, [e.target.id]: e.target.value })}
-                value={inputNPE["bvi-interface"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["npe-bvi-interface"]}
               />
             </Form.Group>
-            <Form.Group as={Col} md="3" controlId="bvi-ipv4-address" className="m-0">
+            <Form.Group as={Col} md="3" controlId="npe-bvi-ipv4-address" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="bvi-ipv4-address"
-                onChange={(e) => setInputNPE({ ...inputNPE, [e.target.id]: e.target.value })}
-                value={inputNPE["bvi-ipv4-address"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["npe-bvi-ipv4-address"]}
               />
             </Form.Group>
-            <Form.Group as={Col} md="2" controlId="bvi-mac-address" className="m-0">
+            <Form.Group as={Col} md="2" controlId="npe-bvi-mac-address" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="bvi-mac-address"
-                onChange={(e) => setInputNPE({ ...inputNPE, [e.target.id]: e.target.value })}
-                value={inputNPE["bvi-mac-address"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["npe-bvi-mac-address"]}
               />
             </Form.Group>
           </Form.Row>
           <div>EVPN</div>
           <Form.Row>
-            <Form.Group as={Col} md="2" controlId="evpn-evi" className="m-0">
+            <Form.Group as={Col} md="2" controlId="npe-evpn-evi" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="evpn-evi"
-                onChange={(e) => setInputNPE({ ...inputNPE, [e.target.id]: e.target.value })}
-                value={inputNPE["evpn-evi"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["npe-evpn-evi"]}
               />
             </Form.Group>
-            <Form.Group as={Col} md="3" controlId="evpn-rt" className="m-0">
+            <Form.Group as={Col} md="3" controlId="npe-evpn-rt" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="evpn-rt"
-                onChange={(e) => setInputNPE({ ...inputNPE, [e.target.id]: e.target.value })}
-                value={inputNPE["evpn-rt"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["npe-evpn-rt"]}
               />
             </Form.Group>
           </Form.Row>
           <div>Router-Static Configuration</div>
           <Form.Row>
-            <Form.Group as={Col} md="2" controlId="destination-ip" className="m-0">
+            <Form.Group as={Col} md="2" controlId="npe-destination-ip" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="destination-ip"
-                onChange={(e) => setInputNPE({ ...inputNPE, [e.target.id]: e.target.value })}
-                value={inputNPE["destination-ip"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["npe-destination-ip"]}
               />
             </Form.Group>
-            <Form.Group as={Col} md="3" controlId="interface" className="m-0">
+            <Form.Group as={Col} md="3" controlId="npe-interface" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="interface"
-                onChange={(e) => setInputNPE({ ...inputNPE, [e.target.id]: e.target.value })}
-                value={inputNPE["interface"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["npe-interface"]}
               />
             </Form.Group>
-            <Form.Group as={Col} md="2" controlId="forward-ip" className="m-0">
+            <Form.Group as={Col} md="2" controlId="npe-forward-ip" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="forward-ip"
-                onChange={(e) => setInputNPE({ ...inputNPE, [e.target.id]: e.target.value })}
-                value={inputNPE["forward-ip"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["npe-forward-ip"]}
               />
             </Form.Group>
           </Form.Row>
@@ -303,14 +355,14 @@ const FormL2L3 = (props) => {
         <div className="border rounded p-2 mb-2">
           <div>agg-address</div>
           <Form.Row>
-            <Form.Group as={Col} md="2" controlId="agg-address" className="m-0">
+            <Form.Group as={Col} md="2" controlId="upe-agg-address" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="agg-address"
-                onChange={(e) => setInputUPE({ ...inputUPE, [e.target.id]: e.target.value })}
-                value={inputUPE["agg-address"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["upe-agg-address"]}
               />
             </Form.Group>
           </Form.Row>
@@ -320,57 +372,57 @@ const FormL2L3 = (props) => {
         <div className="border rounded p-2 mb-2">
           <div>BVI</div>
           <Form.Row>
-            <Form.Group as={Col} md="2" controlId="bvi-interface" className="m-0">
+            <Form.Group as={Col} md="2" controlId="acc-bvi-interface" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="bvi-interface"
-                onChange={(e) => setInputACC({ ...inputACC, [e.target.id]: e.target.value })}
-                value={inputACC["bvi-interface"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["acc-bvi-interface"]}
               />
             </Form.Group>
-            <Form.Group as={Col} md="3" controlId="bvi-ipv4-address" className="m-0">
+            <Form.Group as={Col} md="3" controlId="acc-bvi-ipv4-address" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="bvi-ipv4-address"
-                onChange={(e) => setInputACC({ ...inputACC, [e.target.id]: e.target.value })}
-                value={inputACC["bvi-ipv4-address"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["acc-bvi-ipv4-address"]}
               />
             </Form.Group>
-            <Form.Group as={Col} md="2" controlId="bvi-mac-address" className="m-0">
+            <Form.Group as={Col} md="2" controlId="acc-bvi-mac-address" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="bvi-mac-address"
-                onChange={(e) => setInputACC({ ...inputACC, [e.target.id]: e.target.value })}
-                value={inputACC["bvi-mac-address"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["acc-bvi-mac-address"]}
               />
             </Form.Group>
           </Form.Row>
           <div>EVPN</div>
           <Form.Row>
-            <Form.Group as={Col} md="2" controlId="evpn-evi" className="m-0">
+            <Form.Group as={Col} md="2" controlId="acc-evpn-evi" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="evpn-evi"
-                onChange={(e) => setInputACC({ ...inputACC, [e.target.id]: e.target.value })}
-                value={inputACC["evpn-evi"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["acc-evpn-evi"]}
               />
             </Form.Group>
-            <Form.Group as={Col} md="3" controlId="evpn-rt" className="m-0">
+            <Form.Group as={Col} md="3" controlId="acc-evpn-rt" className="m-0">
               <Form.Control
                 required
                 size="sm"
                 type="text"
                 placeholder="evpn-rt"
-                onChange={(e) => setInputACC({ ...inputACC, [e.target.id]: e.target.value })}
-                value={inputACC["evpn-rt"]}
+                onChange={(e) => setInputDevice({ ...inputDevice, [e.target.id]: e.target.value })}
+                value={inputDevice["acc-evpn-rt"]}
               />
             </Form.Group>
           </Form.Row>
@@ -381,48 +433,48 @@ const FormL2L3 = (props) => {
         onClick={(e) => {
           e.preventDefault();
           if (currentDeviceType === "NPE") {
-            props.onDeviceAdd({
+            onDeviceAddHandler({
               type: currentDeviceType,
               device: currentDevice,
               "interface-type": currentIntfType,
               [`${currentIntfType}-id`]: currentIntfNumber,
-              "bgp-as": currentBgpAs,
+              "bgp-as": inputDevice["bgp-as"],
               "npe-bvi": {
-                "bvi-interface": inputNPE["bvi-interface"],
-                "bvi-ipv4-address": inputNPE["bvi-ipv4-address"],
-                "bvi-mac-address": inputNPE["bvi-mac-address"],
+                "bvi-interface": inputDevice["npe-bvi-interface"],
+                "bvi-ipv4-address": inputDevice["npe-bvi-ipv4-address"],
+                "bvi-mac-address": inputDevice["npe-bvi-mac-address"],
               },
               "npe-evpn": {
-                "evpn-evi": inputNPE["evpn-evi"],
-                "evpn-rt": inputNPE["evpn-rt"],
+                "evpn-evi": inputDevice["npe-evpn-evi"],
+                "evpn-rt": inputDevice["npe-evpn-rt"],
               },
               "npe-router-static": {
-                "destination-ip": inputNPE["destination-ip"],
-                interface: inputNPE["interface"],
-                "forward-ip": inputNPE["forward-ip"],
+                "destination-ip": inputDevice["npe-destination-ip"],
+                interface: inputDevice["npe-interface"],
+                "forward-ip": inputDevice["npe-forward-ip"],
               },
             });
           } else if (currentDeviceType === "UPE") {
-            props.onDeviceAdd({
+            onDeviceAddHandler({
               type: currentDeviceType,
               device: currentDevice,
-              "agg-address": inputUPE["agg-address"],
+              "agg-address": inputDevice["upe-agg-address"],
             });
           } else if (currentDeviceType === "ACC") {
-            props.onDeviceAdd({
+            onDeviceAddHandler({
               type: currentDeviceType,
               device: currentDevice,
               "interface-type": currentIntfType,
               [`${currentIntfType}-id`]: currentIntfNumber,
-              "bgp-as": currentBgpAs,
+              "bgp-as": inputDevice["bgp-as"],
               "acc-bvi": {
-                "bvi-interface": inputACC["bvi-interface"],
-                "bvi-ipv4-address": inputACC["bvi-ipv4-address"],
-                "bvi-mac-address": inputACC["bvi-mac-address"],
+                "bvi-interface": inputDevice["acc-bvi-interface"],
+                "bvi-ipv4-address": inputDevice["acc-bvi-ipv4-address"],
+                "bvi-mac-address": inputDevice["acc-bvi-mac-address"],
               },
               "acc-evpn": {
-                "evpn-evi": inputACC["evpn-evi"],
-                "evpn-rt": inputACC["evpn-rt"],
+                "evpn-evi": inputDevice["acc-evpn-evi"],
+                "evpn-rt": inputDevice["acc-evpn-rt"],
               },
             });
           }
@@ -444,6 +496,6 @@ const FormL2L3 = (props) => {
       </Table>
     </>
   );
-};
+});
 
 export default FormL2L3;

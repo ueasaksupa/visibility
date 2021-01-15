@@ -1,14 +1,46 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import Form from "react-bootstrap/Form";
 import Col from "react-bootstrap/Col";
 import Table from "react-bootstrap/Table";
 
 import { NSO_API } from "../api/apiBackend";
-import FormL3VPNBGP from "./FormL3VPNBGP";
 
-const FormL3VPNCONNECTED = (props) => {
+const FormL3VPNCONNECTED = forwardRef((props, ref) => {
   let deviceOption = [<option key="0">-</option>];
-  const [intfNumberSelector1, setIntfNumberSelector1] = useState(null);
+  const [devices, setDevices] = useState([
+    {
+      "device-type": "NPE1",
+      device: "AGG3_NPE1",
+      "interface-type": "Bundle-Ether",
+      "Bundle-Ether-id": 1,
+      "pe-ipv4-gw": "17.0.1.1/30",
+    },
+    {
+      "device-type": "NPE2",
+      device: "AGG4_NPE2",
+      "interface-type": "Bundle-Ether",
+      "Bundle-Ether-id": 1,
+      "pe-ipv4-gw": "17.0.1.5/30",
+    },
+    {
+      "device-type": "UPE1",
+      device: "AGG1_UPE1",
+    },
+    {
+      "device-type": "UPE2",
+      device: "AGG2_UPE2",
+    },
+    {
+      "device-type": "ACC",
+      device: "ncs540-5",
+      "interface-type": "TenGigE",
+      "TenGigE-id": "0/1/0/1",
+      "pe-ipv4-gw": "18.2.1.1/30",
+      acc_vlan: 1531,
+    },
+  ]);
+  const [intfNumberSelector, setIntfNumberSelector] = useState(null);
+  //
   const [currentIntfType, setCurrentIntfType] = useState("TenGigE");
   const [currentIntfNumber, setCurrentIntfNumber] = useState("-");
   const [currentDevice, setCurrentDevice] = useState("-");
@@ -16,6 +48,25 @@ const FormL3VPNCONNECTED = (props) => {
   const [currentIpGW, setCurrentIpGW] = useState("");
   const [currentAccVlan, setCurrentAccVlan] = useState("");
   const [currentUPEVlan, setCurrentUPEVlan] = useState("");
+  //
+  const [inputCommon, setInputCommon] = useState({
+    "service-id": "L3_Connected_BG_BW1521",
+    vrf: "L3_Connected_BG_BW1521",
+    rt: "100:1521",
+    "pe-vlan": 1521,
+    "auto-rd": "1521",
+    slice: "NPE-ACC-BW",
+    "destination-ip": "151.0.1.0/24",
+    interface: "HundredGigE0/7/0/4.1521",
+    "forward-ip": "17.0.1.2",
+    interface1: "HundredGigE0/4/0/6.1521",
+    "forward-ip1": "17.0.1.6",
+    "bvi-interface": "1531",
+    "bvi-ipv4-address": "17.2.1.1/30",
+    "bvi-mac-address": "1011.1111.3344",
+    evi: "1531",
+    "route-target": "3000:1531",
+  });
 
   deviceOption = [
     ...deviceOption,
@@ -23,6 +74,64 @@ const FormL3VPNCONNECTED = (props) => {
       return <option key={index + 1}>{deviceName}</option>;
     }),
   ];
+
+  useImperativeHandle(ref, () => ({
+    createPayload() {
+      const servicesParams = [];
+      const payload = {};
+      const scale = 1;
+      let slice_container =
+        inputCommon["slice"].includes("BW") || inputCommon["slice"].includes("LT") ? "NPE-ACC-BW-LT" : inputCommon["slice"];
+      for (let i = 0; i < scale; i++) {
+        let payload = {
+          "service-id": `${inputCommon["service-id"]}_${i}`,
+          "l3vpn-connected-type": inputCommon["slice"],
+          "common-param": {
+            "pe-vlan": parseInt(inputCommon["pe-vlan"]) + i,
+            vrf: `${inputCommon["vrf"]}_${parseInt(inputCommon["pe-vlan"]) + i}`,
+            rt: `100:${parseInt(inputCommon["rt"].split(":")[1]) + i}`,
+            "auto-rd": inputCommon["auto-rd"],
+          },
+          [slice_container]: {
+            devices: [...devices],
+          },
+        };
+        if (inputCommon["slice"].includes("BW") || inputCommon["slice"].includes("LT")) {
+          payload[slice_container]["npe-router-static"] = {
+            "destination-ip": inputCommon["destination-ip"],
+            interface: inputCommon["interface"],
+            "forward-ip": inputCommon["forward-ip"],
+            interface1: inputCommon["interface1"],
+            "forward-ip1": inputCommon["forward-ip1"],
+          };
+        }
+        if (inputCommon["slice"].includes("SP")) {
+          payload[slice_container].BVI = {
+            "bvi-interface": inputCommon["bvi-interface"],
+            "bvi-ipv4-address": inputCommon["bvi-ipv4-address"],
+            "bvi-mac-address": inputCommon["bvi-mac-address"],
+          };
+          payload[slice_container].evpn = {
+            evi: inputCommon["evi"],
+            "route-target": inputCommon["route-target"],
+          };
+        }
+        servicesParams.push(payload);
+      }
+      payload["L3VPNconnected:L3VPNconnected"] = servicesParams;
+      return payload;
+    },
+  }));
+
+  const onDeviceAddHandler = (object, action = "add") => {
+    if (action === "add") {
+      setDevices([...devices, object]);
+    } else if (action === "delete") {
+      let tmpDevice = [...devices];
+      tmpDevice.splice(object, 1);
+      setDevices([...tmpDevice]);
+    }
+  };
 
   useEffect(() => {
     // Do fetch new interface id belonging to selected device and interface type
@@ -33,14 +142,14 @@ const FormL3VPNCONNECTED = (props) => {
         ).then((response) => {
           console.log("1: ", response);
           if (response.status === 200) {
-            setIntfNumberSelector1([
+            setIntfNumberSelector([
               <option key="0">-</option>,
               ...response.data[`tailf-ned-cisco-ios-xr:${currentIntfType}`].map((ele, index) => {
                 return <option key={index + 1}>{ele.id}</option>;
               }),
             ]);
           } else {
-            setIntfNumberSelector1(null);
+            setIntfNumberSelector(null);
           }
         });
       }
@@ -50,8 +159,8 @@ const FormL3VPNCONNECTED = (props) => {
   }, [currentDevice, currentIntfType]);
 
   const renderDeviceTableBody = () => {
-    if (props.inputParams.devices.length !== 0) {
-      return props.inputParams.devices.map((row, index) => {
+    if (devices.length !== 0) {
+      return devices.map((row, index) => {
         return (
           <tr key={index}>
             <td>{row["device-type"]}</td>
@@ -66,7 +175,7 @@ const FormL3VPNCONNECTED = (props) => {
                 className="btn btn-danger btn-sm"
                 onClick={(e) => {
                   e.preventDefault();
-                  props.onDeviceAdd(index, "delete");
+                  onDeviceAddHandler(index, "delete");
                 }}
               >
                 <i className="fas fa-trash-alt" />
@@ -89,7 +198,7 @@ const FormL3VPNCONNECTED = (props) => {
   const deviceAddHandler = (e) => {
     e.preventDefault();
     if (currentDeviceType === "ACC") {
-      props.onDeviceAdd({
+      onDeviceAddHandler({
         "device-type": currentDeviceType,
         device: currentDevice,
         "interface-type": currentIntfType,
@@ -104,16 +213,16 @@ const FormL3VPNCONNECTED = (props) => {
         "interface-type": currentIntfType,
         [`${currentIntfType}-id`]: currentIntfNumber,
       };
-      if (!props.inputParams["slice"].includes("SP")) {
+      if (!inputCommon["slice"].includes("SP")) {
         deviceObject["pe-ipv4-gw"] = currentIpGW;
       }
-      props.onDeviceAdd(deviceObject);
+      onDeviceAddHandler(deviceObject);
     } else if (currentDeviceType.includes("UPE")) {
       let deviceObject = {
         "device-type": currentDeviceType,
         device: currentDevice,
       };
-      if (props.inputParams["slice"].includes("NPE-UPE")) {
+      if (inputCommon["slice"].includes("NPE-UPE")) {
         deviceObject = {
           ...deviceObject,
           "interface-type": currentIntfType,
@@ -122,7 +231,7 @@ const FormL3VPNCONNECTED = (props) => {
           upe_vlan: currentUPEVlan,
         };
       }
-      props.onDeviceAdd(deviceObject);
+      onDeviceAddHandler(deviceObject);
     }
   };
 
@@ -137,8 +246,8 @@ const FormL3VPNCONNECTED = (props) => {
             size="sm"
             type="text"
             placeholder="service name"
-            onChange={props.onChange}
-            value={props.inputParams["service-id"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["service-id"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="pe-vlan">
@@ -148,29 +257,52 @@ const FormL3VPNCONNECTED = (props) => {
             size="sm"
             type="text"
             placeholder="vlan number"
-            onChange={props.onChange}
-            value={props.inputParams["pe-vlan"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["pe-vlan"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="rt">
           <Form.Label>RT</Form.Label>
-          <Form.Control size="sm" required type="text" onChange={props.onChange} value={props.inputParams["rt"]} />
+          <Form.Control
+            size="sm"
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["rt"]}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="auto-rd">
           <Form.Label>Auto RD</Form.Label>
-          <Form.Control size="sm" required type="text" onChange={props.onChange} value={props.inputParams["auto-rd"]} />
+          <Form.Control
+            size="sm"
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["auto-rd"]}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="vrf">
           <Form.Label>
             VRF<small className="mx-2">(Automatically append VLAN number)</small>
           </Form.Label>
-          <Form.Control size="sm" required type="text" onChange={props.onChange} value={props.inputParams["vrf"]} />
+          <Form.Control
+            size="sm"
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["vrf"]}
+          />
         </Form.Group>
       </Form.Row>
       <Form.Row>
         <Form.Group as={Col} md="3" controlId="slice">
           <Form.Label>Slice</Form.Label>
-          <Form.Control size="sm" as="select" onChange={props.onChange} value={props.inputParams["slice"]}>
+          <Form.Control
+            size="sm"
+            as="select"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["slice"]}
+          >
             <option value="NPE-ACC-BW">Bandwidth</option>
             <option value="NPE-ACC-LT">Latency</option>
             <option value="NPE-ACC-SP">Special</option>
@@ -178,7 +310,7 @@ const FormL3VPNCONNECTED = (props) => {
           </Form.Control>
         </Form.Group>
       </Form.Row>
-      {props.inputParams["slice"] !== "NPE-UPE" && !props.inputParams["slice"].includes("SP") && (
+      {inputCommon["slice"] !== "NPE-UPE" && !inputCommon["slice"].includes("SP") && (
         <>
           <div>NPE Router-Static Configuration</div>
           <div className="border rounded p-2 mb-2">
@@ -189,8 +321,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="destination-ip"
-                  onChange={props.onChange}
-                  value={props.inputParams["destination-ip"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["destination-ip"]}
                 />
               </Form.Group>
               <Form.Group as={Col} md="3" controlId="interface" className="m-0">
@@ -199,8 +331,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="Interface NPE1"
-                  onChange={props.onChange}
-                  value={props.inputParams["interface"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["interface"]}
                 />
               </Form.Group>
               <Form.Group as={Col} md="2" controlId="forward-ip" className="m-0">
@@ -209,8 +341,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="forward-ip NPE1"
-                  onChange={props.onChange}
-                  value={props.inputParams["forward-ip"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["forward-ip"]}
                 />
               </Form.Group>
               <Form.Group as={Col} md="3" controlId="interface1" className="m-0">
@@ -219,8 +351,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="Interface NPE2"
-                  onChange={props.onChange}
-                  value={props.inputParams["interface1"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["interface1"]}
                 />
               </Form.Group>
               <Form.Group as={Col} md="2" controlId="forward-ip1" className="m-0">
@@ -229,15 +361,15 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="forward-ip NPE2"
-                  onChange={props.onChange}
-                  value={props.inputParams["forward-ip1"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["forward-ip1"]}
                 />
               </Form.Group>
             </Form.Row>
           </div>
         </>
       )}
-      {props.inputParams["slice"] === "NPE-ACC-SP" && (
+      {inputCommon["slice"] === "NPE-ACC-SP" && (
         <div>
           <div>Special Slice Settings</div>
           <div className="border rounded p-2 mb-2">
@@ -249,8 +381,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="bvi-interface"
-                  onChange={props.onChange}
-                  value={props.inputParams["bvi-interface"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["bvi-interface"]}
                 />
               </Form.Group>
               <Form.Group as={Col} md="3" controlId="bvi-ipv4-address" className="m-0">
@@ -259,8 +391,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="bvi-ipv4-address"
-                  onChange={props.onChange}
-                  value={props.inputParams["bvi-ipv4-address"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["bvi-ipv4-address"]}
                 />
               </Form.Group>
               <Form.Group as={Col} md="2" controlId="bvi-mac-address" className="m-0">
@@ -269,8 +401,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="bvi-mac-address"
-                  onChange={props.onChange}
-                  value={props.inputParams["bvi-mac-address"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["bvi-mac-address"]}
                 />
               </Form.Group>
             </Form.Row>
@@ -282,8 +414,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="evi"
-                  onChange={props.onChange}
-                  value={props.inputParams["evi"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["evi"]}
                 />
               </Form.Group>
               <Form.Group as={Col} md="3" controlId="route-target" className="m-0">
@@ -292,8 +424,8 @@ const FormL3VPNCONNECTED = (props) => {
                   size="sm"
                   type="text"
                   placeholder="route-target"
-                  onChange={props.onChange}
-                  value={props.inputParams["route-target"]}
+                  onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+                  value={inputCommon["route-target"]}
                 />
               </Form.Group>
             </Form.Row>
@@ -310,7 +442,7 @@ const FormL3VPNCONNECTED = (props) => {
             <option>UPE2</option>
             <option>NPE1</option>
             <option>NPE2</option>
-            {props.inputParams["slice"] !== "NPE-UPE" && <option>ACC</option>}
+            {inputCommon["slice"] !== "NPE-UPE" && <option>ACC</option>}
           </Form.Control>
         </Form.Group>
         <Form.Group as={Col} md="2" controlId="device">
@@ -326,7 +458,7 @@ const FormL3VPNCONNECTED = (props) => {
             {deviceOption}
           </Form.Control>
         </Form.Group>
-        {(!currentDeviceType.includes("UPE") || props.inputParams["slice"].includes("NPE-UPE")) && (
+        {(!currentDeviceType.includes("UPE") || inputCommon["slice"].includes("NPE-UPE")) && (
           <Form.Group as={Col} md="2" controlId="intfType">
             <Form.Label>Interface</Form.Label>
             <Form.Control
@@ -344,17 +476,17 @@ const FormL3VPNCONNECTED = (props) => {
             </Form.Control>
           </Form.Group>
         )}
-        {(!currentDeviceType.includes("UPE") || props.inputParams["slice"].includes("NPE-UPE")) && (
+        {(!currentDeviceType.includes("UPE") || inputCommon["slice"].includes("NPE-UPE")) && (
           <Form.Group as={Col} md="2" controlId="intfNumber">
             <Form.Label>Number</Form.Label>
             <Form.Control size="sm" as="select" onChange={(e) => setCurrentIntfNumber(e.target.value)} value={currentIntfNumber}>
-              {intfNumberSelector1 ? intfNumberSelector1 : <option>-</option>}
+              {intfNumberSelector ? intfNumberSelector : <option>-</option>}
             </Form.Control>
           </Form.Group>
         )}
-        {(!props.inputParams["slice"].includes("SP") && !currentDeviceType.includes("UPE")) ||
-        (props.inputParams["slice"].includes("SP") && currentDeviceType.includes("ACC")) ||
-        props.inputParams["slice"].includes("NPE-UPE") ? (
+        {(!inputCommon["slice"].includes("SP") && !currentDeviceType.includes("UPE")) ||
+        (inputCommon["slice"].includes("SP") && currentDeviceType.includes("ACC")) ||
+        inputCommon["slice"].includes("NPE-UPE") ? (
           <Form.Group as={Col} md="2" controlId="pe-ipv4-gw">
             <Form.Label>IPv4 Gateway</Form.Label>
             <Form.Control
@@ -381,7 +513,7 @@ const FormL3VPNCONNECTED = (props) => {
             />
           </Form.Group>
         )}
-        {currentDeviceType.includes("UPE") && props.inputParams["slice"].includes("NPE-UPE") && (
+        {currentDeviceType.includes("UPE") && inputCommon["slice"].includes("NPE-UPE") && (
           <Form.Group as={Col} md="2" controlId="upe_vlan">
             <Form.Label>UPE Vlan</Form.Label>
             <Form.Control
@@ -412,6 +544,6 @@ const FormL3VPNCONNECTED = (props) => {
       </Table>
     </>
   );
-};
+});
 
 export default FormL3VPNCONNECTED;

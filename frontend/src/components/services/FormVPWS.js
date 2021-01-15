@@ -1,17 +1,29 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import Form from "react-bootstrap/Form";
 import Col from "react-bootstrap/Col";
 import Table from "react-bootstrap/Table";
 
 import { NSO_API } from "../api/apiBackend";
 
-const FormVPWS = (props) => {
+const FormVPWS = forwardRef((props, ref) => {
   let deviceOption = [<option key="0">-</option>];
-  const [intfNumberSelector1, setIntfNumberSelector1] = useState(null);
+  const [devices, setDevices] = useState([]);
+  const [intfNumberSelector, setIntfNumberSelector] = useState(null);
+  //
   const [currentIntfType, setCurrentIntfType] = useState("TenGigE");
   const [currentIntfNumber, setCurrentIntfNumber] = useState("-");
   const [currentDevice, setCurrentDevice] = useState("-");
   const [currentDeviceType, setCurrentDeviceType] = useState("Access");
+  //
+  const [inputCommon, setInputCommon] = useState({
+    "service-id": "",
+    "vlan-id": "",
+    "evpn-evi": "",
+    "x-connect-group": "",
+    "p2p-domain": "",
+    labelPE: "",
+    labelACC: "",
+  });
 
   deviceOption = [
     ...deviceOption,
@@ -19,6 +31,39 @@ const FormVPWS = (props) => {
       return <option key={index + 1}>{deviceName}</option>;
     }),
   ];
+
+  useImperativeHandle(ref, () => ({
+    createPayload() {
+      const servicesParams = [];
+      const payload = {};
+      for (let i = 0; i < props.scale; i++) {
+        servicesParams.push({
+          "service-id": `${inputCommon["service-id"]}_${i}`,
+          "common-param": {
+            "vlan-id": parseInt(inputCommon["vlan-id"]) + i,
+            "evpn-evi": parseInt(inputCommon["evpn-evi"]) + i,
+            "x-connect-group": inputCommon["x-connect-group"],
+            "p2p-domain": inputCommon["p2p-domain"],
+          },
+          "device-specific": {
+            devices: [...devices],
+          },
+        });
+      }
+      payload["vpws:vpws"] = servicesParams;
+      return payload;
+    },
+  }));
+
+  const onDeviceAddHandler = (object, action = "add") => {
+    if (action === "add") {
+      setDevices([...devices, object]);
+    } else if (action === "delete") {
+      let tmpDevice = [...devices];
+      tmpDevice.splice(object, 1);
+      setDevices([...tmpDevice]);
+    }
+  };
 
   useEffect(() => {
     const fetchInterfaceId = () => {
@@ -28,14 +73,14 @@ const FormVPWS = (props) => {
         ).then((response) => {
           console.log("1: ", response);
           if (response.status === 200) {
-            setIntfNumberSelector1([
+            setIntfNumberSelector([
               <option key="0">-</option>,
               ...response.data[`tailf-ned-cisco-ios-xr:${currentIntfType}`].map((ele, index) => {
                 return <option key={index + 1}>{ele.id}</option>;
               }),
             ]);
           } else {
-            setIntfNumberSelector1(null);
+            setIntfNumberSelector(null);
           }
         });
       }
@@ -45,8 +90,8 @@ const FormVPWS = (props) => {
   }, [currentDevice, currentIntfType]);
 
   const renderDeviceTableBody = () => {
-    if (props.inputParams.devices.length !== 0) {
-      return props.inputParams.devices.map((row, index) => {
+    if (devices.length !== 0) {
+      return devices.map((row, index) => {
         return (
           <tr key={index}>
             <td>{row.device}</td>
@@ -60,7 +105,7 @@ const FormVPWS = (props) => {
                 className="btn btn-danger btn-sm"
                 onClick={(e) => {
                   e.preventDefault();
-                  props.onDeviceAdd(index, "delete");
+                  onDeviceAddHandler(index, "delete");
                 }}
               >
                 <i className="fas fa-trash-alt" />
@@ -90,8 +135,8 @@ const FormVPWS = (props) => {
             required
             type="text"
             placeholder="eline service"
-            onChange={props.onChange}
-            value={props.inputParams["service-id"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["service-id"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="vlan-id">
@@ -100,8 +145,8 @@ const FormVPWS = (props) => {
             required
             type="text"
             placeholder="Start vlan number"
-            onChange={props.onChange}
-            value={props.inputParams["vlan-id"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["vlan-id"]}
           />
         </Form.Group>
         <Form.Group as={Col} controlId="evpn-evi">
@@ -110,8 +155,8 @@ const FormVPWS = (props) => {
             required
             type="text"
             placeholder="Start EVI number"
-            onChange={props.onChange}
-            value={props.inputParams["evpn-evi"]}
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["evpn-evi"]}
           />
         </Form.Group>
       </Form.Row>
@@ -119,19 +164,39 @@ const FormVPWS = (props) => {
       <Form.Row>
         <Form.Group as={Col} controlId="labelPE">
           <Form.Label>Label PE</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams.labelPE} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon.labelPE}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="labelACC">
           <Form.Label>Label ACC</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams.labelACC} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon.labelACC}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="x-connect-group">
           <Form.Label>x-connect-group</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["x-connect-group"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["x-connect-group"]}
+          />
         </Form.Group>
         <Form.Group as={Col} controlId="p2p-domain">
           <Form.Label>p2p-domain</Form.Label>
-          <Form.Control required type="text" onChange={props.onChange} value={props.inputParams["p2p-domain"]} />
+          <Form.Control
+            required
+            type="text"
+            onChange={(e) => setInputCommon({ ...inputCommon, [e.target.id]: e.target.value })}
+            value={inputCommon["p2p-domain"]}
+          />
         </Form.Group>
       </Form.Row>
       {/*  */}
@@ -174,7 +239,7 @@ const FormVPWS = (props) => {
         <Form.Group as={Col} md="2" controlId="intfNumber">
           <Form.Label>Number</Form.Label>
           <Form.Control as="select" onChange={(e) => setCurrentIntfNumber(e.target.value)} value={currentIntfNumber}>
-            {intfNumberSelector1 ? intfNumberSelector1 : <option>-</option>}
+            {intfNumberSelector ? intfNumberSelector : <option>-</option>}
           </Form.Control>
         </Form.Group>
         <button
@@ -182,12 +247,12 @@ const FormVPWS = (props) => {
           className="bg-blue btn btn-primary btn-sm mb-3"
           onClick={(e) => {
             e.preventDefault();
-            props.onDeviceAdd({
+            onDeviceAddHandler({
               device: currentDevice,
               "interface-type": currentIntfType,
               [`${currentIntfType}-id`]: currentIntfNumber,
-              "evpn-source": currentDeviceType === "Access" ? props.inputParams.labelACC : props.inputParams.labelPE,
-              "evpn-target": currentDeviceType === "Access" ? props.inputParams.labelPE : props.inputParams.labelACC,
+              "evpn-source": currentDeviceType === "Access" ? inputCommon.labelACC : inputCommon.labelPE,
+              "evpn-target": currentDeviceType === "Access" ? inputCommon.labelPE : inputCommon.labelACC,
             });
           }}
         >
@@ -208,6 +273,6 @@ const FormVPWS = (props) => {
       </Table>
     </>
   );
-};
+});
 
 export default FormVPWS;
