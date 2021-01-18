@@ -53,6 +53,22 @@ const FormVPWS = forwardRef((props, ref) => {
       payload["vpws:vpws"] = servicesParams;
       return payload;
     },
+    createDBPayload() {
+      return {
+        payload: this.createPayload(),
+        status: "active",
+        type: "vpws",
+        scale: props.scale,
+        name: inputCommon["service-id"],
+        st_vlan: inputCommon["vlan-id"],
+        st_evi: inputCommon["evpn-evi"],
+        labelACC: inputCommon.labelACC,
+        labelPE: inputCommon.labelPE,
+        group: inputCommon["x-connect-group"],
+        domain: inputCommon["p2p-domain"],
+        devices: [...devices],
+      };
+    },
   }));
 
   const onDeviceAddHandler = (object, action = "add") => {

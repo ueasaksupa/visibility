@@ -97,6 +97,19 @@ const FormL3VPNBGP = forwardRef((props, ref) => {
       payload["L3VPNbgp:L3VPNbgp"] = servicesParams;
       return payload;
     },
+    createDBPayload() {
+      return {
+        payload: this.createPayload(),
+        status: "active",
+        type: "L3VPNbgp",
+        scale: 1,
+        name: inputCommon["service-id"],
+        st_vlan: inputCommon["pe-vlan"],
+        rt: inputCommon["rt"],
+        vrf: inputCommon["vrf"],
+        devices: [...devices],
+      };
+    },
   }));
 
   const onDeviceAddHandler = (object, action = "add") => {

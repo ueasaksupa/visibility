@@ -91,9 +91,9 @@ const ServiceView = (props) => {
     if (typeof currentService[service] !== "object") return output;
     for (let ele of currentService[service]) {
       if (ele.status === "active") {
-        output.active = output.active + 1;
+        output.active = output.active + parseInt(ele.scale);
       } else {
-        output.inactive = output.inactive + 1;
+        output.inactive = output.inactive + parseInt(ele.scale);
       }
     }
     return output;

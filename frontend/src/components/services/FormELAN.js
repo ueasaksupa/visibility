@@ -52,6 +52,21 @@ const FormELAN = forwardRef((props, ref) => {
       payload["elan:elan"] = servicesParams;
       return payload;
     },
+    createDBPayload() {
+      return {
+        payload: this.createPayload(),
+        status: "active",
+        type: "elan",
+        scale: props.scale,
+        name: inputCommon["service-id"],
+        st_vlan: inputCommon["vlan-id"],
+        st_evi: inputCommon["evpn-evi"],
+        rt: inputCommon["evpn-rt"],
+        group: inputCommon["bridge-group"],
+        domain: inputCommon["bridge-domain"],
+        devices: [...devices],
+      };
+    },
   }));
 
   const onDeviceAddHandler = (object, action = "add") => {

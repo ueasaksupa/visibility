@@ -121,6 +121,19 @@ const FormL3VPNCONNECTED = forwardRef((props, ref) => {
       payload["L3VPNconnected:L3VPNconnected"] = servicesParams;
       return payload;
     },
+    createDBPayload() {
+      return {
+        payload: this.createPayload(),
+        status: "active",
+        type: "L3VPNconnected",
+        scale: 1,
+        name: inputCommon["service-id"],
+        st_vlan: inputCommon["pe-vlan"],
+        rt: inputCommon["rt"],
+        vrf: inputCommon["vrf"],
+        devices: [...devices],
+      };
+    },
   }));
 
   const onDeviceAddHandler = (object, action = "add") => {
