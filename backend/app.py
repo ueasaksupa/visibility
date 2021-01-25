@@ -68,12 +68,28 @@ def trigger():
 ##########
 # SERVICES
 ##################################################################################
-# GET
+# GET ALL SERVICE
 @app.route('/services/<service>', methods=['GET'])
 def get_services(service):
     return jsonify({"response": [{k: v for k, v in x.items() if k != '_id'}
                                  for x in serviceDB[service].find()]})
 
+
+# GET COUNT OF SERVICE STATUS
+@app.route('/services/status/<service>', methods=['GET'])
+def get_services_status(service):
+    pipeline = [
+        {
+            '$group': {
+                '_id': '$status', 
+                'count': {
+                    '$sum': 1
+                }
+            }
+        }
+    ]
+    result = serviceDB[service].aggregate(pipeline)
+    return jsonify(list(result))
 
 # CREATE
 @app.route('/services/<service>', methods=['POST'])
