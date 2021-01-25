@@ -9,8 +9,23 @@ import Nav from "react-bootstrap/Nav";
 import Dropdown from "react-bootstrap/Dropdown";
 import Badge from "react-bootstrap/Badge";
 
+const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
+  <div
+    href=""
+    ref={ref}
+    onClick={(e) => {
+      e.preventDefault();
+      onClick(e);
+    }}
+  >
+    {children}
+  </div>
+));
+
 const NavigationBar = (props) => {
-  const endpoint = "http://127.0.0.1:5000/notification/subscribe";
+  const BACKEND_HOST = process.env.REACT_APP_BACKEND_HOST || "127.0.0.1";
+  const BACKEND_PORT = process.env.REACT_APP_BACKEND_PORT || "5000";
+  const endpoint = `http://${BACKEND_HOST}:${BACKEND_PORT}/notification/subscribe`;
   const [alertNum, setAlertNum] = useState(0);
   const [alertList, setAlertList] = useState([]);
 
@@ -48,11 +63,15 @@ const NavigationBar = (props) => {
                   </button>
                   <div className="h5">{`Link ${ele.status}`}</div>
                 </div>
-                <div>
-                  <div className="text-muted float-right">{notificationAge}</div>{" "}
-                  <div>
-                    link between <b>{ele.source}</b> and <b>{ele.target}</b>
-                  </div>{" "}
+                <div className="row">
+                  <div className="col-auto mr-auto">
+                    <div className="text-wrap">
+                      link between <b>{ele.source}</b> and <b>{ele.target}</b>
+                    </div>
+                  </div>
+                  <div className="col-auto">
+                    <div className="text-muted">{notificationAge}</div>
+                  </div>
                 </div>
               </div>
             </Dropdown.Item>
@@ -83,12 +102,13 @@ const NavigationBar = (props) => {
       </Navbar.Brand>
       <Nav className="ml-auto">
         <Dropdown drop="left" onClick={fetchAlertList}>
-          <Dropdown.Toggle variant={alertNum > 0 ? "danger" : "info"}>
-            <i className="bell icon"></i>
-            {"   "}
-            <Badge variant="light">{alertNum}</Badge>
+          <Dropdown.Toggle as={CustomToggle}>
+            <Badge pill variant="danger" className="p-2 pointer">
+              <i className="fa fa-bell mr-1"></i>
+              {alertNum}
+            </Badge>
           </Dropdown.Toggle>
-          <Dropdown.Menu>
+          <Dropdown.Menu style={{ width: "500px" }}>
             <button style={{ fontSize: "0.8rem", color: "blue" }} className="close float-right mr-2">
               Clear all
             </button>

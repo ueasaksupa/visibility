@@ -17,6 +17,7 @@ import FormL3VPNSTATIC from "./FormL3VPNSTATIC";
 import FormL2L3 from "./FormL2L3";
 import { NSO_API } from "../api/apiBackend";
 import BACKEND from "../api/pythonBackend";
+import axios from "axios";
 
 const NavLinkList = (props) => {
   return props.dryrunResponse.map((ele, index) => {
@@ -38,6 +39,41 @@ const NavLinkData = (props) => {
   });
 };
 
+const DryrunSection = (props) => {
+  if (props.dryrunResponse) {
+    return (
+      <div className="card my-3" id="dry-run-result">
+        <div className="card-header">
+          <div className="row">
+            <div className="col-md-6">Dry-run result</div>
+          </div>
+        </div>
+        <Tab.Container id="left-tabs-example" defaultActiveKey="0">
+          <Row>
+            <Col sm={3}>
+              <Nav variant="pills" className="flex-column">
+                <NavLinkList dryrunResponse={props.dryrunResponse} />
+              </Nav>
+            </Col>
+            <Col sm={9}>
+              <Tab.Content className="my-3">
+                <NavLinkData dryrunResponse={props.dryrunResponse} />
+              </Tab.Content>
+            </Col>
+          </Row>
+        </Tab.Container>
+        <div className="card-footer text-right">
+          <button className="bg-blue btn btn-primary btn-sm" onClick={props.serviceCreateHandler}>
+            Confirm to deploy
+          </button>
+        </div>
+      </div>
+    );
+  } else {
+    return null;
+  }
+};
+
 const ServiceNew = (props) => {
   const [devices, setDevices] = useState([]);
   const [modalShow, setModalShow] = useState(false);
@@ -56,8 +92,6 @@ const ServiceNew = (props) => {
 
   const scrollToBottom = () => window.scrollTo(0, document.body.scrollHeight);
 
-  const payloadCreator = () => {};
-
   const serviceDryRunHandler = async (e) => {
     e.preventDefault();
     setProcessingDryrun(true);
@@ -67,12 +101,14 @@ const ServiceNew = (props) => {
     console.log("payload: ", data);
     try {
       let response = await NSO_API.post("restconf/data?dry-run=native", data);
+
       if (response.status === 201) {
         setDryrunResponse(response.data["dry-run-result"].native.device);
         scrollToBottom();
         console.log("response dryrun: ", response);
       }
     } catch (error) {
+      console.log(error);
       console.log("err dryrun: ", error.response);
       setErrMsg(error.response.data.errors.error[0]["error-message"]);
     }
@@ -136,34 +172,6 @@ const ServiceNew = (props) => {
     L3VPNCONNECTED: <FormL3VPNCONNECTED ref={formRef} devices={devices} />,
     L2L3: <FormL2L3 ref={formRef} devices={devices} />,
   };
-  const dryrunSection = (
-    <div className="card my-3">
-      <div className="card-header">
-        <div className="row">
-          <div className="col-md-6">Dry-run result</div>
-        </div>
-      </div>
-      <Tab.Container id="left-tabs-example" defaultActiveKey="0">
-        <Row>
-          <Col sm={3}>
-            <Nav variant="pills" className="flex-column">
-              <NavLinkList dryrunResponse={dryrunResponse} />
-            </Nav>
-          </Col>
-          <Col sm={9}>
-            <Tab.Content className="my-3">
-              <NavLinkData dryrunResponse={dryrunResponse} />
-            </Tab.Content>
-          </Col>
-        </Row>
-      </Tab.Container>
-      <div className="card-footer text-right">
-        <button className="bg-blue btn btn-primary btn-sm" onClick={serviceCreateHandler}>
-          Confirm to deploy
-        </button>
-      </div>
-    </div>
-  );
 
   return (
     <>
@@ -223,7 +231,7 @@ const ServiceNew = (props) => {
             </div>
           </Form>
         </div>
-        {dryrunResponse ? dryrunSection : null}
+        <DryrunSection dryrunResponse={dryrunResponse} serviceCreateHandler={serviceCreateHandler} />
       </div>
       {/* MODAL */}
       <Modal show={modalShow} backdrop="static">

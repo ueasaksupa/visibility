@@ -58,6 +58,18 @@ class TopologyComponent extends Component {
     sidebar.style.transform = "translateX(100%)";
   };
 
+  findNodeFromLinkAddr(addr) {
+    let { topologyData } = this.props;
+    for (let node in topologyData) {
+      for (let link of topologyData[node].links) {
+        if (link.localAddress === addr) {
+          return { source: node, target: link.target };
+        }
+      }
+    }
+    return null;
+  }
+
   getReroutedPath() {
     let links = [];
     let path = this.props.reroutedPath;
@@ -65,50 +77,33 @@ class TopologyComponent extends Component {
     console.log(path);
     console.log(topologyData);
 
-    let srcNode = path.lspSrcNode;
-    let dstNode = path.lspDstNode;
-
-    // render original path
-    for (let index = 0; index < path["original-path"].hop.length - 1; index++) {
-      let target = path["original-path"].hop[index + 1].intfSrcNode;
-      links.push({
-        source: topologyData[srcNode].id,
-        target: topologyData[target].id,
-        customParam: { thickness: 6, color: "#FFC300", path: customPathStyle },
-        attr: null,
-      });
-      srcNode = path["original-path"].hop[index + 1].intfSrcNode;
-    }
-    links.push({
-      source: topologyData[srcNode].id,
-      target: topologyData[dstNode].id,
-      customParam: { thickness: 6, color: "#FFC300", path: customPathStyle },
-      attr: null,
-    });
-
-    srcNode = path.lspSrcNode;
-    dstNode = path.lspDstNode;
-
     // render re-routed path
-    for (let index = 0; index < path["re-routed-opt-path"].hop.length - 1; index++) {
-      let target = path["re-routed-opt-path"].hop[index + 1].intfSrcNode;
-      console.log(index);
-      console.log(topologyData[srcNode]);
-      console.log(topologyData[target]);
+    console.log("preparing re-routed-opt-path");
+    for (let index = 0; index < path["re-routed-opt-path"].hop.length; index++) {
+      let link = this.findNodeFromLinkAddr(path["re-routed-opt-path"].hop[index]["ip-address"]);
+      if (link === null) continue;
+      console.log("src:", link.source, " target:", link.target);
       links.push({
-        source: topologyData[srcNode].id,
-        target: topologyData[target].id,
+        source: topologyData[link.source].id,
+        target: topologyData[link.target].id,
         customParam: { thickness: 6, color: "#52BE80", path: customPathStyle },
         attr: null,
       });
-      srcNode = path["re-routed-opt-path"].hop[index + 1].intfSrcNode;
     }
-    links.push({
-      source: topologyData[srcNode].id,
-      target: topologyData[dstNode].id,
-      customParam: { thickness: 6, color: "#52BE80", path: customPathStyle },
-      attr: null,
-    });
+
+    // render original path
+    console.log("preparing original-path");
+    for (let index = 0; index < path["original-path"].hop.length; index++) {
+      let link = this.findNodeFromLinkAddr(path["original-path"].hop[index]["ip-address"]);
+      if (link === null) continue;
+      console.log("src:", link.source, " target:", link.target);
+      links.push({
+        source: topologyData[link.source].id,
+        target: topologyData[link.target].id,
+        customParam: { thickness: 6, color: "#FFC300", path: customPathStyle },
+        attr: null,
+      });
+    }
     return links;
   }
 

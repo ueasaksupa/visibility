@@ -3,6 +3,7 @@ import Card from "react-bootstrap/Card";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
 import DataTable from "react-data-table-component";
+import Alert from "react-bootstrap/Alert";
 
 import OptimizationResult from "./OptimazationResult";
 
@@ -14,6 +15,7 @@ const CongestedLsp = (props) => {
   const [procFindCong, setProcFindCong] = useState(false);
   const [optimizeResult, setOptimizeResult] = useState(null);
   const [currentExpandRow, setCurrentExpandRow] = useState([]);
+  const [errMsg, setErrMsg] = useState(null);
 
   const scrollToBottom = () => window.scrollTo(0, document.body.scrollHeight);
 
@@ -56,19 +58,29 @@ const CongestedLsp = (props) => {
         "exclude-vip-tunnels": "true",
         "create-new-lsps": "false",
         "action-type": "dry-run",
-        "perform-opt-on": "special-slice",
+        "perform-opt-on": props.selectedSlice,
       },
     };
-    let resp = await WAE_API.post(
-      "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
-      payload,
-    );
-    if (resp.status === 200) {
-      setOptimizeResult(resp.data);
-      console.log("resp Opt result:", resp);
+    try {
+      let resp = await WAE_API.post(
+        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
+        payload,
+      );
+      if (resp.status === 200) {
+        setOptimizeResult(resp.data);
+        console.log("resp Opt result:", resp);
+      }
+      setProcFindCong(false);
+      scrollToBottom();
+    } catch (error) {
+      console.log(error);
+      if (error.response) {
+        setErrMsg(error.response.data.errors.error[0]["error-message"]);
+      } else {
+        setErrMsg("Network error or timeout.");
+      }
+      setProcFindCong(false);
     }
-    setProcFindCong(false);
-    scrollToBottom();
   };
 
   const handleSliderChange = (event) => {
@@ -221,6 +233,12 @@ const CongestedLsp = (props) => {
   return (
     <>
       <Card className="mt-3">
+        {errMsg ? (
+          <Alert variant="danger" onClose={() => setErrMsg(null)} dismissible>
+            <Alert.Heading>You got an error!</Alert.Heading>
+            <p>{errMsg}</p>
+          </Alert>
+        ) : null}
         <Card.Header>
           <div className="h6">BW Optimization</div>
         </Card.Header>
@@ -278,7 +296,7 @@ const CongestedLsp = (props) => {
               </div>
             </div>
             <div className="col-md-6">
-              <button onClick={handleOptimization} className="btn btn-primary float-right">
+              <button onClick={handleOptimization} className="btn btn-primary float-right" disabled={procFindCong}>
                 {procFindCong ? <Spinner animation="grow" size="sm" variant="light" /> : null}
                 {"   "}Preview
               </button>

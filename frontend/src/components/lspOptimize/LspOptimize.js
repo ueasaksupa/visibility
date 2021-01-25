@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Card from "react-bootstrap/Card";
 import Spinner from "react-bootstrap/Spinner";
 import CongestedLsp from "./CongestedLsp";
+import Alert from "react-bootstrap/Alert";
 
 import { WAE_API } from "../api/apiBackend";
 import xtcExtractor from "../api/xtcExtractor";
@@ -13,6 +14,7 @@ const LspOptimize = (props) => {
   const [congestedLsp, setCongestedLsp] = useState(null);
   const [procFindCong, setProcFindCong] = useState(false);
   const [selectedSlice, setSelectedSlice] = useState("special-slice");
+  const [errMsg, setErrMsg] = useState(null);
 
   const fetchData = async () => {
     let topoR = await SR_PCE_API.get("/topo/subscribe/txt");
@@ -23,16 +25,21 @@ const LspOptimize = (props) => {
   const handleFindCongestion = async () => {
     setProcFindCong(true);
     let payload = { input: { "interface-utilization": congestionThresHold, "perform-opt-on": selectedSlice } };
-    let resp = await WAE_API.post(
-      "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/sr-fetch-congestion:sr-fetch-congestion/run/",
-      payload,
-    );
-    if (resp.status === 204) {
-      setCongestedLsp(null);
-      console.log("resp congestion inf:", resp);
-    } else {
-      setCongestedLsp(resp.data);
-      console.log("resp congestion inf:", resp);
+    try {
+      let resp = await WAE_API.post(
+        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/sr-fetch-congestion:sr-fetch-congestion/run/",
+        payload,
+      );
+      if (resp.status === 204) {
+        setCongestedLsp(null);
+        console.log("resp congestion inf:", resp);
+      } else {
+        setCongestedLsp(resp.data);
+        console.log("resp congestion inf:", resp);
+      }
+    } catch (error) {
+      console.log(error);
+      setErrMsg("Network error or timeout.");
     }
     setProcFindCong(false);
   };
@@ -49,6 +56,12 @@ const LspOptimize = (props) => {
   return (
     <div className="container-fluid">
       <Card className="mt-3">
+        {errMsg ? (
+          <Alert variant="danger" onClose={() => setErrMsg(null)} dismissible>
+            <Alert.Heading>You got an error!</Alert.Heading>
+            <p>{errMsg}</p>
+          </Alert>
+        ) : null}
         <Card.Header>
           <div className="h6">Interface Congestion Threshold</div>
         </Card.Header>
@@ -84,6 +97,7 @@ const LspOptimize = (props) => {
                 style={{ width: "135px", fontSize: "12px" }}
                 onClick={handleFindCongestion}
                 className="btn btn-primary float-right"
+                disabled={procFindCong}
               >
                 {procFindCong ? <Spinner animation="grow" size="sm" variant="light" /> : "Find congestions"}
               </button>
@@ -91,7 +105,7 @@ const LspOptimize = (props) => {
           </div>
         </Card.Body>
       </Card>
-      <CongestedLsp topologyData={topologyData} congestedLsp={congestedLsp} />
+      <CongestedLsp topologyData={topologyData} congestedLsp={congestedLsp} selectedSlice={selectedSlice} />
     </div>
   );
 };
