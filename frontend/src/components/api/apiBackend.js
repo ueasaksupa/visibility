@@ -20,8 +20,8 @@ export const WAE_API = axios.create({
 });
 
 export const NSO_API = axios.create({
-  // baseURL: `http://127.0.0.1:8888/nso`,
-  baseURL: `http://${CSCO_API_HOST}/nso`,
+  baseURL: `http://127.0.0.1:8888/nso`,
+  // baseURL: `http://${CSCO_API_HOST}/nso`,
   headers: {
     Authorization: "Basic YWRtaW46YWRtaW4=",
     "Content-Type": "application/yang-data+json",
