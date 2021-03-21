@@ -1,13 +1,23 @@
 import React, { useState } from "react";
 import Card from "react-bootstrap/Card";
 import Table from "react-bootstrap/Table";
+import Spinner from "react-bootstrap/Spinner";
 import Modal from "react-bootstrap/Modal";
-
-import TopologyComponent from "../topology/TopologyComponent";
+//
+// import TopologyComponent from "../topology/TopologyComponent";
 
 const OptimizationResult = (props) => {
   const [modalShow, setModalShow] = useState(false);
   const [selectedRerouteLsp, setSelectedRerouteLsp] = useState(null);
+  const [processSubmitOptimize, setProcessSubmitOptimize] = useState(false);
+
+  const handleOptimizationCommit = async () => {
+    setProcessSubmitOptimize(true);
+    let payload = { ...props.dryRunPayload };
+    payload.input["action-type"] = "commit";
+    await props.action(payload);
+    setProcessSubmitOptimize(false);
+  };
 
   const renderOptResultTableBody = () => {
     const resultObj = props.optimizeResult["hybrid-optimizer:output"]["bandwidth-optimization-results"];
@@ -81,7 +91,7 @@ const OptimizationResult = (props) => {
   const result = props.optimizeResult["hybrid-optimizer:output"]["bandwidth-optimization-results"];
   return (
     <>
-      <Card className="mt-3 mb-5">
+      <Card className="mt-3">
         <Card.Header>
           <div className="h6">Optimization Result</div>
         </Card.Header>
@@ -161,6 +171,14 @@ const OptimizationResult = (props) => {
               </Table>
             </div>
           </div>
+          <div className="row m-2">
+            <div className="col-md-12">
+              <button onClick={handleOptimizationCommit} className="btn btn-primary float-right" disabled={processSubmitOptimize}>
+                {processSubmitOptimize && <Spinner animation="grow" size="sm" variant="light" />}
+                {"   "}Commit
+              </button>
+            </div>
+          </div>
         </Card.Body>
       </Card>
       <Modal size="lg" show={modalShow} onHide={() => setModalShow(false)}>
@@ -168,12 +186,12 @@ const OptimizationResult = (props) => {
           <Modal.Title>Summary Re-routed LSP</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ height: "500px" }}>
-          <TopologyComponent
+          {/* <TopologyComponent
             disableLinkHover
             disableNodeClick
             topologyData={props.topologyData}
             reroutedPath={selectedRerouteLsp}
-          />
+          /> */}
         </Modal.Body>
       </Modal>
     </>

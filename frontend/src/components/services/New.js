@@ -17,7 +17,6 @@ import FormL3VPNSTATIC from "./FormL3VPNSTATIC";
 import FormL2L3 from "./FormL2L3";
 import { NSO_API } from "../api/apiBackend";
 import BACKEND from "../api/pythonBackend";
-import axios from "axios";
 
 const NavLinkList = (props) => {
   return props.dryrunResponse.map((ele, index) => {

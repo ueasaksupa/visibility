@@ -29,11 +29,13 @@ const LspPathDetail = (props) => {
 const LspDetails = (props) => {
   const [lspData, setLspData] = useState(null);
   const [selectedLsp, setSelectedLsp] = useState(null);
+  const [searchBox, setSearchBox] = useState("");
+
   const tableColumns = [
     {
       name: "Status",
       sortable: true,
-      selector: "operationalState",
+      grow: 1,
       cell: (row) => {
         if (row.operationalState === "lsp-up") {
           return <Badge variant="success">lsp-up</Badge>;
@@ -46,6 +48,7 @@ const LspDetails = (props) => {
       name: "Tunnel name",
       selector: "lspName",
       sortable: true,
+      grow: 3,
     },
     {
       name: "Source",
@@ -66,6 +69,7 @@ const LspDetails = (props) => {
       name: "Color",
       selector: "color",
       sortable: true,
+      grow: 1,
     },
   ];
 
@@ -95,12 +99,22 @@ const LspDetails = (props) => {
   };
 
   const onSearchChangeHandler = (e) => {
-    const type = e.target.type;
-    const value = type === "checkbox" ? e.target.checked : e.target.value;
+    setSearchBox(e.target.value);
+  };
+
+  const filterTableData = (tableData) => {
     const tmp = [];
-    /*
-    if event come from search-box 
-    */
+    for (let row of tableData) {
+      for (const col in row) {
+        if (row[col] && col !== "path") {
+          if (row[col].toString().includes(searchBox)) {
+            tmp.push(row);
+            break;
+          }
+        }
+      }
+    }
+    return tmp;
   };
 
   const onRefreshButton = () => {
@@ -169,7 +183,7 @@ const LspDetails = (props) => {
                 subHeader
                 subHeaderComponent={<SubHeader onSearchChangeHandler={onSearchChangeHandler} />}
                 columns={tableColumns}
-                data={tableData}
+                data={filterTableData(tableData)}
                 onRowClicked={onRowClickedHandler}
               />
             </div>

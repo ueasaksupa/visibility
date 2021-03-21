@@ -1,47 +1,87 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Card from "react-bootstrap/Card";
 import Spinner from "react-bootstrap/Spinner";
-import CongestedLsp from "./CongestedLsp";
 import Alert from "react-bootstrap/Alert";
-
+//
+import { useLspOptimizeContext } from "./ContextProvider";
+import CongestedLsp from "./CongestedLsp";
+import OptimizationResult from "./OptimazationResult";
+//
+import BACKEND from "../api/pythonBackend";
 import { WAE_API } from "../api/apiBackend";
-import xtcExtractor from "../api/xtcExtractor";
-import { SR_PCE_API } from "../api/apiBackend";
+// import xtcExtractor from "../api/xtcExtractor";
+// import { SR_PCE_API } from "../api/apiBackend";
 
 const LspOptimize = (props) => {
+  const [state, dispatch] = useLspOptimizeContext();
+  //
   const [congestionThresHold, setCongestionThresHold] = useState(50);
-  const [topologyData, setTopologyData] = useState(null);
-  const [congestedLsp, setCongestedLsp] = useState(null);
-  const [procFindCong, setProcFindCong] = useState(false);
+  const [processFindConguest, setProcessFindConguest] = useState(false);
   const [selectedSlice, setSelectedSlice] = useState("special-slice");
   const [errMsg, setErrMsg] = useState(null);
+  const dryRunPayloadRef = useRef();
 
-  const fetchData = async () => {
-    let topoR = await SR_PCE_API.get("/topo/subscribe/txt");
-    let extractor = new xtcExtractor();
-    setTopologyData(extractor.getTopologyObject(topoR.data));
-  };
-
-  const handleFindCongestion = async () => {
-    setProcFindCong(true);
-    let payload = { input: { "interface-utilization": congestionThresHold, "perform-opt-on": selectedSlice } };
+  const handleOptimizationCommit = async (payload) => {
+    dispatch({ type: "updateFindCongestedLsp", payload: null });
+    dispatch({ type: "updateOptimizeResult", payload: null });
     try {
-      let resp = await WAE_API.post(
-        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/sr-fetch-congestion:sr-fetch-congestion/run/",
-        payload,
-      );
-      if (resp.status === 204) {
-        setCongestedLsp(null);
-        console.log("resp congestion inf:", resp);
-      } else {
-        setCongestedLsp(resp.data);
-        console.log("resp congestion inf:", resp);
+      let resp = await BACKEND.post("/lsp-optimize", payload);
+      if (resp.status === 200) {
+        let newHistory = await BACKEND.get("/lsp-optimize");
+        dispatch({ type: "updateOptimizeHistory", payload: newHistory.data.response });
       }
     } catch (error) {
       console.log(error);
-      setErrMsg("Network error or timeout.");
+      if (error.response) {
+        setErrMsg(error.response.data.errors.error[0]["error-message"]);
+      } else {
+        setErrMsg("Network error or timeout.");
+      }
     }
-    setProcFindCong(false);
+  };
+
+  const handleOptimizationDryrun = async (payload) => {
+    dispatch({ type: "updateOptimizeResult", payload: null });
+    try {
+      let response = await WAE_API.post(
+        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
+        payload,
+      );
+      if (response.status === 200) {
+        dryRunPayloadRef.current = payload;
+        dispatch({ type: "updateOptimizeResult", payload: response.data });
+        console.log("response Opt result:", response);
+      }
+    } catch (error) {
+      console.log(error);
+      if (error.response) {
+        setErrMsg(error.response.data.errors.error[0]["error-message"]);
+      } else {
+        setErrMsg("Network error or timeout. (check conectivity to the backend)");
+      }
+    }
+  };
+
+  const handleFindCongestion = async () => {
+    setProcessFindConguest(true);
+    let payload = { input: { "interface-utilization": congestionThresHold, "perform-opt-on": selectedSlice } };
+    try {
+      let response = await WAE_API.post(
+        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/sr-fetch-congestion:sr-fetch-congestion/run/",
+        payload,
+      );
+      if (response.status === 204) {
+        dispatch({ type: "updateFindCongestedLsp", payload: null });
+        console.log("response congestion inf:", response);
+      } else {
+        dispatch({ type: "updateFindCongestedLsp", payload: response.data });
+        console.log("response congestion inf:", response);
+      }
+    } catch (error) {
+      console.log(error);
+      setErrMsg("Network error or timeout. (check conectivity to the backend)");
+    }
+    setProcessFindConguest(false);
   };
 
   const handleSliderChange = (event) => {
@@ -49,19 +89,14 @@ const LspOptimize = (props) => {
     setCongestionThresHold(value);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   return (
-    <div className="container-fluid">
-      <Card className="mt-3">
-        {errMsg ? (
-          <Alert variant="danger" onClose={() => setErrMsg(null)} dismissible>
-            <Alert.Heading>You got an error!</Alert.Heading>
-            <p>{errMsg}</p>
-          </Alert>
-        ) : null}
+    <>
+      {errMsg && (
+        <Alert variant="danger" onClose={() => setErrMsg(null)} dismissible>
+          <strong>You got an error!</strong> : {errMsg}
+        </Alert>
+      )}
+      <Card>
         <Card.Header>
           <div className="h6">Interface Congestion Threshold</div>
         </Card.Header>
@@ -97,16 +132,21 @@ const LspOptimize = (props) => {
                 style={{ width: "135px", fontSize: "12px" }}
                 onClick={handleFindCongestion}
                 className="btn btn-primary float-right"
-                disabled={procFindCong}
+                disabled={processFindConguest}
               >
-                {procFindCong ? <Spinner animation="grow" size="sm" variant="light" /> : "Find congestions"}
+                {processFindConguest ? <Spinner animation="grow" size="sm" variant="light" /> : "Find congestions"}
               </button>
             </div>
           </div>
         </Card.Body>
       </Card>
-      <CongestedLsp topologyData={topologyData} congestedLsp={congestedLsp} selectedSlice={selectedSlice} />
-    </div>
+      <CongestedLsp congestedLsp={state.congestedLsp} selectedSlice={selectedSlice} action={handleOptimizationDryrun} />
+      <OptimizationResult
+        optimizeResult={state.optimizeResult}
+        dryRunPayload={dryRunPayloadRef.current}
+        action={handleOptimizationCommit}
+      />
+    </>
   );
 };
 

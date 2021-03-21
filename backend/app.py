@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from flask_socketio import SocketIO, emit, send
 from flask_cors import CORS
 from pymongo import MongoClient
+from bson.objectid import ObjectId
 from datetime import datetime
 from datetime import timedelta
 import pytz
@@ -10,7 +11,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
 cors = CORS(app)
-client = MongoClient('mongodb://mongo:27017',
+client = MongoClient('mongodb://localhost:27017',
                      username="root", password="dbpass")
 notiftcationDB = client.notification
 serviceDB = client.services
@@ -122,7 +123,47 @@ def update_service(service=None, name=None):
     result = serviceDB[service].update_one(query, newvalues)
     return jsonify({"data": "OK"})
 
+# POST : create new history for new optimizLSP commit action
+@app.route('/lsp-optimize', methods=["POST"])
+def create_optimize():
+    collection = "lspOptimize"
+    data = request.json
+    print(data)
+
+    result = serviceDB[collection].insert_one(
+        {
+            "lsps-to-be-optimized": data["input"]["lsps-to-be-optimized"], 
+            "created_on": datetime.utcnow(),
+            "perform-opt-on":data["input"]["perform-opt-on"],
+            "post-optimization-threshold": data["input"]["post-optimization-threshold"]
+        }
+    )
+    return jsonify({"data": "OK"})
+
+# GET : GET history
+@app.route('/lsp-optimize', methods=["GET"])
+def get_optimize_history():
+    collection = "lspOptimize"
+    return jsonify(
+        {
+            "response": [
+                            {k: str(v) if k == '_id' else v for k, v in x.items()} for x in serviceDB[collection].find()
+                        ]
+        }
+    )
+
+# DELETE : DELETE history
+@app.route('/lsp-optimize/<history_id>', methods=["DELETE"])
+def delete_optimize_history(history_id):
+    collection = "lspOptimize"
+    print(history_id)
+    result = serviceDB[collection].delete_one({ "_id": ObjectId(history_id) })
+    if result.deleted_count > 0 :
+        return "",204
+    else:
+        return "",404
+
 
 if __name__ == '__main__':
     socketio.init_app(app, cors_allowed_origins="*")
-    socketio.run(app, host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)

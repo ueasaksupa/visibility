@@ -86,6 +86,8 @@ class TopologyComponent extends Component {
           "line-color": "#e63946",
           "target-arrow-shape": "triangle",
           "target-arrow-color": "#e63946",
+          "source-endpoint": "outside-to-node-or-label",
+          "target-endpoint": "outside-to-node-or-label",
         },
       },
       {
@@ -96,6 +98,8 @@ class TopologyComponent extends Component {
           "line-color": "#80b918",
           "target-arrow-shape": "triangle",
           "target-arrow-color": "#80b918",
+          "source-endpoint": "outside-to-node-or-label",
+          "target-endpoint": "outside-to-node-or-label",
         },
       },
     ];

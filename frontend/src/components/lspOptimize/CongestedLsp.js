@@ -1,23 +1,16 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+//
 import Card from "react-bootstrap/Card";
 import Spinner from "react-bootstrap/Spinner";
 import Table from "react-bootstrap/Table";
 import DataTable from "react-data-table-component";
-import Alert from "react-bootstrap/Alert";
-
-import OptimizationResult from "./OptimazationResult";
-
-import { WAE_API } from "../api/apiBackend";
-
+//
 const CongestedLsp = (props) => {
   const [postThresHold, setPostThresHold] = useState(50);
   const [selectedReopLsp, setSelectedReopLsp] = useState([]);
-  const [procFindCong, setProcFindCong] = useState(false);
-  const [optimizeResult, setOptimizeResult] = useState(null);
   const [currentExpandRow, setCurrentExpandRow] = useState([]);
-  const [errMsg, setErrMsg] = useState(null);
-
-  const scrollToBottom = () => window.scrollTo(0, document.body.scrollHeight);
+  const [futurePathOptionList, setFuturePathOptionList] = useState({});
+  const [processOptimizeDryrun, setProcessOptimizeDryrun] = useState(false);
 
   const handleOnCheckBoxClick = (event, group) => {
     // using for store tmp list of lsp related to the event, helper for deselect filter function.
@@ -28,12 +21,24 @@ const CongestedLsp = (props) => {
       // it is checkbox from group row
       lspList = group.lsps.map((lsp) => {
         tmpTargetLspName.push(lsp.lspName);
-        return { lspName: lsp.lspName, lspSrcNode: lsp.lspSrcNode };
+        return {
+          lspName: lsp.lspName,
+          lspSrcNode: lsp.lspSrcNode,
+          futurePathOption: futurePathOptionList[lsp.lspName],
+          currentActivePathOption: lsp.activeCandPathPref,
+        };
       });
     } else {
       // it is checkbox from expanded row
       tmpTargetLspName.push(group.lspName);
-      lspList = [{ lspName: group.lspName, lspSrcNode: group.lspSrcNode }];
+      lspList = [
+        {
+          lspName: group.lspName,
+          lspSrcNode: group.lspSrcNode,
+          futurePathOption: futurePathOptionList[group.lspName],
+          currentActivePathOption: group.activeCandPathPref,
+        },
+      ];
     }
     //
     const isChecked = event.target.checked;
@@ -49,8 +54,8 @@ const CongestedLsp = (props) => {
     }
   };
 
-  const handleOptimization = async () => {
-    setProcFindCong(true);
+  const handleOptimizationDryrun = async () => {
+    setProcessOptimizeDryrun(true);
     let payload = {
       input: {
         "post-optimization-threshold": postThresHold,
@@ -61,31 +66,23 @@ const CongestedLsp = (props) => {
         "perform-opt-on": props.selectedSlice,
       },
     };
-    try {
-      let resp = await WAE_API.post(
-        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
-        payload,
-      );
-      if (resp.status === 200) {
-        setOptimizeResult(resp.data);
-        console.log("resp Opt result:", resp);
-      }
-      setProcFindCong(false);
-      scrollToBottom();
-    } catch (error) {
-      console.log(error);
-      if (error.response) {
-        setErrMsg(error.response.data.errors.error[0]["error-message"]);
-      } else {
-        setErrMsg("Network error or timeout.");
-      }
-      setProcFindCong(false);
-    }
+    await props.action(payload);
+    setProcessOptimizeDryrun(false);
   };
 
   const handleSliderChange = (event) => {
     let value = event.target.value;
     setPostThresHold(value);
+  };
+
+  const handleOnPathOptionChange = (event, row) => {
+    setFuturePathOptionList({ ...futurePathOptionList, [row.lspName]: event.target.value });
+    let i = selectedReopLsp.findIndex((el) => el.lspName === row.lspName);
+    if (i >= 0) {
+      let tmp = [...selectedReopLsp];
+      tmp[i].futurePathOption = event.target.value;
+      setSelectedReopLsp([...tmp]);
+    }
   };
 
   const searchLspSelectedState = (lspName) => {
@@ -113,13 +110,13 @@ const CongestedLsp = (props) => {
   const renderCongestedLspTableBody = () => {
     let groupedCongestedLsp = {};
     props.congestedLsp["sr-fetch-congestion:output"]["congested-lsps"].forEach((lsp, index) => {
-      let color = lsp.lspName.split("_")[2];
+      let color = parseInt(lsp.lspName.split("_")[2]);
       let service;
-      if (color == 100) {
+      if (color === 100) {
         service = "Service bandwidth-slice";
-      } else if (color == 200) {
+      } else if (color === 200) {
         service = "Service latency-slice";
-      } else if (color == 300) {
+      } else if (color === 300) {
         service = "Service special-slice";
       } else if (color > 10000 && color < 20000) {
         service = "Background bandwidth-slice";
@@ -137,7 +134,16 @@ const CongestedLsp = (props) => {
           service: service,
           lspSrcNode: lsp.lspSrcNode,
           lspDstNode: lsp.lspDstNode,
-          lsps: [{ id: index, lspName: lsp.lspName, traffic: lsp.traffic, delay: lsp.delay, lspSrcNode: lsp.lspSrcNode }],
+          lsps: [
+            {
+              id: index,
+              lspName: lsp.lspName,
+              traffic: lsp.traffic,
+              delay: lsp.delay,
+              lspSrcNode: lsp.lspSrcNode,
+              activeCandPathPref: lsp.activeCandPathPref,
+            },
+          ],
         };
       } else {
         // push the lsp name into list
@@ -147,9 +153,9 @@ const CongestedLsp = (props) => {
           traffic: lsp.traffic,
           delay: lsp.delay,
           lspSrcNode: lsp.lspSrcNode,
+          activeCandPathPref: lsp.activeCandPathPref,
         });
-        groupedCongestedLsp[service + lsp.lspSrcNode + lsp.lspDstNode].traffic =
-          groupedCongestedLsp[service + lsp.lspSrcNode + lsp.lspDstNode].traffic + parseInt(lsp.traffic.split(" ")[0]);
+        groupedCongestedLsp[service + lsp.lspSrcNode + lsp.lspDstNode].traffic += parseInt(lsp.traffic.split(" ")[0]);
       }
     });
 
@@ -168,6 +174,27 @@ const CongestedLsp = (props) => {
         name: "Delay",
         selector: "delay",
         sortable: true,
+      },
+      {
+        name: "activePathOption",
+        selector: "activeCandPathPref",
+      },
+      {
+        name: "futurePathOption",
+        cell: (row) => {
+          return (
+            <select
+              className="custom-select custom-select-sm"
+              style={{ width: "100px" }}
+              value={futurePathOptionList[row.lspName]}
+              onChange={(e) => handleOnPathOptionChange(e, row)}
+            >
+              <option value="40">40</option>
+              <option value="70">70</option>
+              <option value="110">110</option>
+            </select>
+          );
+        },
       },
       {
         name: "LSP to optimize",
@@ -216,29 +243,37 @@ const CongestedLsp = (props) => {
           </td>
         </tr>,
       );
-      returnJSXobject.push(
-        <tr key={key + "_"} className="collapse-row" style={{ visibility: currentExpandRow.includes(key) ? "visible" : null }}>
-          <td></td>
-          <td colSpan="5">
-            <DataTable pagination dense noHeader columns={tableColumns} data={groupedCongestedLsp[key].lsps} />
-          </td>
-        </tr>,
-      );
+      currentExpandRow.includes(key) &&
+        returnJSXobject.push(
+          <tr key={key + "_"}>
+            <td colSpan="6">
+              <DataTable pagination dense noHeader columns={tableColumns} data={groupedCongestedLsp[key].lsps} />
+            </td>
+          </tr>,
+        );
     }
-    // console.log(groupedCongestedLsp);
     return returnJSXobject;
   };
+
+  useEffect(() => {
+    if (props.congestedLsp) {
+      let pathOptionDict = {};
+      props.congestedLsp["sr-fetch-congestion:output"]["congested-lsps"].forEach((el) => {
+        pathOptionDict[el.lspName] = (parseInt(el.activeCandPathPref) + 10).toString();
+      });
+      setFuturePathOptionList({ ...pathOptionDict });
+    } else {
+      // reset state when component not appear
+      setSelectedReopLsp([]);
+      setCurrentExpandRow([]);
+      setFuturePathOptionList({});
+    }
+  }, [props.congestedLsp]);
 
   if (props.congestedLsp === null) return null;
   return (
     <>
       <Card className="mt-3">
-        {errMsg ? (
-          <Alert variant="danger" onClose={() => setErrMsg(null)} dismissible>
-            <Alert.Heading>You got an error!</Alert.Heading>
-            <p>{errMsg}</p>
-          </Alert>
-        ) : null}
         <Card.Header>
           <div className="h6">BW Optimization</div>
         </Card.Header>
@@ -296,22 +331,20 @@ const CongestedLsp = (props) => {
               </div>
             </div>
             <div className="col-md-6">
-              <button onClick={handleOptimization} className="btn btn-primary float-right" disabled={procFindCong}>
-                {procFindCong ? <Spinner animation="grow" size="sm" variant="light" /> : null}
-                {"   "}Preview
+              <button onClick={handleOptimizationDryrun} className="btn btn-primary float-right" disabled={processOptimizeDryrun}>
+                {processOptimizeDryrun ? (
+                  <>
+                    <Spinner animation="grow" size="sm" variant="light" />
+                    {"   "}Calculating
+                  </>
+                ) : (
+                  "Preview"
+                )}
               </button>
             </div>
           </div>
         </Card.Body>
       </Card>
-      {procFindCong ? (
-        <div className="text-center m-3">
-          <Spinner animation="grow" size="sm" variant="dark" />
-          {"   "}Calculating...
-        </div>
-      ) : (
-        <OptimizationResult {...props} optimizeResult={optimizeResult} />
-      )}
     </>
   );
 };

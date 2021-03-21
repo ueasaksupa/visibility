@@ -6,7 +6,6 @@ import Badge from "react-bootstrap/Badge";
 import Modal from "react-bootstrap/Modal";
 import Spinner from "react-bootstrap/Spinner";
 import ProgressBar from "react-bootstrap/ProgressBar";
-import DataTable from "react-data-table-component";
 
 import { NSO_API } from "../api/apiBackend";
 import BACKEND from "../api/pythonBackend";

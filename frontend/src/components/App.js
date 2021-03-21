@@ -3,7 +3,7 @@ import { BrowserRouter, Route, Switch, Link } from "react-router-dom";
 
 import NavigationBar from "./NavigationBar";
 
-import LspOptimize from "./lspOptimize/LspOptimize";
+import LspOptimize from "./lspOptimize";
 import Home from "./home/Home";
 import ServiceView from "./services/View";
 import ServiceNew from "./services/New";

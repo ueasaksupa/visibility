@@ -17,6 +17,10 @@ body {
   height: 100%;
 }
 
+.fa-trash:hover {
+  color: #dc3545;
+}
+
 .main-content {
   margin-left: 80px;
   height: calc(100% - 57px); /* minus the size of navbar */
@@ -229,10 +233,18 @@ tr.lsp-detail.active {
   border-radius: 0;
 }
 
-.collapse-row {
-  visibility: collapse;
-}
-
 .pointer {
   cursor: pointer;
+}
+
+.vertical-seperator {
+  position: relative;
+  box-sizing: border-box;
+  width: 2px;
+  height: 100%;
+  border-right-width: 2px;
+  border-right-style: solid;
+  border-right-color: #eaeaea;
+  z-index: 100;
+  left: var(--side-width);
 }
