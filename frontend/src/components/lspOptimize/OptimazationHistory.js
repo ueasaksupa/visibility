@@ -62,7 +62,7 @@ const OptimizationHistory = (props) => {
       input: {
         "action-type": "dry-run",
         "perform-opt-on": row["perform-opt-on"],
-        "lsps-to-be-delete": row["lsps-to-be-optimized"].map((el) => ({
+        "lsps-to-be-delete": row["re-routed-lsps"].map((el) => ({
           lspName: el.lspName,
           lspSrcNode: el.lspSrcNode,
           pathOption: el.futurePathOption,
@@ -97,7 +97,7 @@ const OptimizationHistory = (props) => {
       name: "Num# LSP affected",
       sortable: true,
       cell: (row) => {
-        return row["lsps-to-be-optimized"].length;
+        return row["re-routed-lsps"].length;
       },
       grow: 1,
     },

@@ -5,7 +5,7 @@ import Alert from "react-bootstrap/Alert";
 //
 import { useLspOptimizeContext } from "./ContextProvider";
 import CongestedLsp from "./CongestedLsp";
-import OptimizationResult from "./OptimazationResult";
+import OptimizationDryrun from "./OptimazationDryrun";
 //
 import BACKEND from "../api/pythonBackend";
 import { WAE_API } from "../api/apiBackend";
@@ -17,18 +17,28 @@ const LspOptimize = (props) => {
   //
   const [congestionThresHold, setCongestionThresHold] = useState(50);
   const [processFindConguest, setProcessFindConguest] = useState(false);
-  const [selectedSlice, setSelectedSlice] = useState("special-slice");
+  const [selectedSlice, setSelectedSlice] = useState("bw-slice");
   const [errMsg, setErrMsg] = useState(null);
   const dryRunPayloadRef = useRef();
 
   const handleOptimizationCommit = async (payload) => {
-    dispatch({ type: "updateFindCongestedLsp", payload: null });
-    dispatch({ type: "updateOptimizeResult", payload: null });
     try {
-      let resp = await BACKEND.post("/lsp-optimize", payload);
+      let response = await WAE_API.post(
+        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
+        payload,
+      );
+      console.log("commit resp", response.data);
+      let historyPayload = {
+        "perform-opt-on": payload.input["perform-opt-on"],
+        "re-routed-lsps": response.data["hybrid-optimizer:output"]["bandwidth-optimization-results"]["re-routed-lsps"],
+        result: response.data["hybrid-optimizer:output"].result,
+      };
+      let resp = await BACKEND.post("/lsp-optimize", historyPayload);
       if (resp.status === 200) {
         let newHistory = await BACKEND.get("/lsp-optimize");
         dispatch({ type: "updateOptimizeHistory", payload: newHistory.data.response });
+        dispatch({ type: "updateFindCongestedLsp", payload: null });
+        dispatch({ type: "updateOptimizeResult", payload: null });
       }
     } catch (error) {
       console.log(error);
@@ -141,7 +151,7 @@ const LspOptimize = (props) => {
         </Card.Body>
       </Card>
       <CongestedLsp congestedLsp={state.congestedLsp} selectedSlice={selectedSlice} action={handleOptimizationDryrun} />
-      <OptimizationResult
+      <OptimizationDryrun
         optimizeResult={state.optimizeResult}
         dryRunPayload={dryRunPayloadRef.current}
         action={handleOptimizationCommit}

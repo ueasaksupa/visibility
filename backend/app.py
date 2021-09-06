@@ -132,10 +132,10 @@ def create_optimize():
 
     result = serviceDB[collection].insert_one(
         {
-            "lsps-to-be-optimized": data["input"]["lsps-to-be-optimized"], 
+            "re-routed-lsps": data["re-routed-lsps"], 
             "created_on": datetime.utcnow(),
-            "perform-opt-on":data["input"]["perform-opt-on"],
-            "post-optimization-threshold": data["input"]["post-optimization-threshold"]
+            "perform-opt-on":data["perform-opt-on"],
+            "result": data["result"]
         }
     )
     return jsonify({"data": "OK"})

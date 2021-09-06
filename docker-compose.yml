@@ -37,3 +37,9 @@ services:
       REACT_APP_BACKEND_PORT: 5000
       REACT_APP_BACKEND_HOST: "http://127.0.0.1"
       REACT_APP_CSCO_API_HOST: "http://127.0.0.1"
+
+  nginx:
+    build: ./nginx
+    ports:
+      - 8888:8080
+    restart: always

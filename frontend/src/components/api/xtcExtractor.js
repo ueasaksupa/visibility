@@ -85,23 +85,24 @@ class xtcExtractor {
         let nodeId, nodename;
         let links = [];
         let prefixSID = [];
-
-        node.fields.forEach((field) => {
-          if (field.name === "content") {
-            field.fields.forEach((contendField) => {
-              if (contendField.name === "node-identifier") {
-                nodeId = this._getNodeId(contendField);
-              } else if (contendField.name === "node-protocol-identifier") {
-                nodename = this._getNodeName(contendField);
-              } else if (contendField.name === "ipv4-links") {
-                links.push(this._getLinkInfo(contendField));
-              } else if (contendField.name === "prefix-sids") {
-                prefixSID.push(this._getPrefixSidInfo(contendField));
-              }
-            });
-          }
-        });
-        outputObj[nodename] = { nodename, id: nodeId, links, prefixSID };
+        if (node.fields) {
+          node.fields.forEach((field) => {
+            if (field.name === "content") {
+              field.fields.forEach((contendField) => {
+                if (contendField.name === "node-identifier") {
+                  nodeId = this._getNodeId(contendField);
+                } else if (contendField.name === "node-protocol-identifier") {
+                  nodename = this._getNodeName(contendField);
+                } else if (contendField.name === "ipv4-links") {
+                  links.push(this._getLinkInfo(contendField));
+                } else if (contendField.name === "prefix-sids") {
+                  prefixSID.push(this._getPrefixSidInfo(contendField));
+                }
+              });
+            }
+          });
+          outputObj[nodename] = { nodename, id: nodeId, links, prefixSID };
+        }
       });
       console.log("outObjTopo:", outputObj);
       return outputObj;
@@ -114,48 +115,50 @@ class xtcExtractor {
     let outputObj = {};
     lspData.data_gpbkv.forEach((lsp) => {
       let lspName, color, source, target, bindingSid, path, preference, operationalState, peerAddress, intfName;
-      lsp.fields.forEach((field) => {
-        if (field.name === "content") {
-          field.fields.forEach((contendField) => {
-            if (contendField.name === "tunnel-name") {
-              lspName = this._getFieldValue(contendField);
-            } else if (contendField.name === "peer-address") {
-              peerAddress = this._getFieldValue(contendField);
-            } else if (contendField.name === "color") {
-              color = this._getFieldValue(contendField);
-            } else if (contendField.name === "interface-name") {
-              intfName = this._getFieldValue(contendField);
-            } else if (contendField.name === "detail-lsp-information") {
-              contendField.fields.forEach((field) => {
-                if (field.name === "brief-lsp-information") {
-                  source = this._getValueOfField(field, "source-address");
-                  target = this._getValueOfField(field, "destination-address");
-                  bindingSid = this._getValueOfField(field, "binding-sid");
-                  operationalState = this._getValueOfField(field, "operational-state");
-                } else if (field.name === "er-os") {
-                  path = this._getLspPath(field);
-                } else if (field.name === "eros") {
-                  path = this._getLspPath(field);
-                } else if (field.name === "preference") {
-                  preference = this._getFieldValue(field);
-                }
-              });
-            }
-          });
-        }
-      });
-      outputObj[lspName] = {
-        operationalState,
-        lspName,
-        color,
-        intfName,
-        source,
-        target,
-        bindingSid,
-        path,
-        preference,
-        peerAddress,
-      };
+      if (lsp.fields) {
+        lsp.fields.forEach((field) => {
+          if (field.name === "content") {
+            field.fields.forEach((contendField) => {
+              if (contendField.name === "tunnel-name") {
+                lspName = this._getFieldValue(contendField);
+              } else if (contendField.name === "peer-address") {
+                peerAddress = this._getFieldValue(contendField);
+              } else if (contendField.name === "color") {
+                color = this._getFieldValue(contendField);
+              } else if (contendField.name === "interface-name") {
+                intfName = this._getFieldValue(contendField);
+              } else if (contendField.name === "detail-lsp-information") {
+                contendField.fields.forEach((field) => {
+                  if (field.name === "brief-lsp-information") {
+                    source = this._getValueOfField(field, "source-address");
+                    target = this._getValueOfField(field, "destination-address");
+                    bindingSid = this._getValueOfField(field, "binding-sid");
+                    operationalState = this._getValueOfField(field, "operational-state");
+                  } else if (field.name === "er-os") {
+                    path = this._getLspPath(field);
+                  } else if (field.name === "eros") {
+                    path = this._getLspPath(field);
+                  } else if (field.name === "preference") {
+                    preference = this._getFieldValue(field);
+                  }
+                });
+              }
+            });
+          }
+        });
+        outputObj[lspName] = {
+          operationalState,
+          lspName,
+          color,
+          intfName,
+          source,
+          target,
+          bindingSid,
+          path,
+          preference,
+          peerAddress,
+        };
+      }
     });
     console.log("outObjLsp:", outputObj);
     return outputObj;

@@ -12,7 +12,8 @@ export const SR_PCE_API = axios.create({
 
 export const WAE_API = axios.create({
   // baseURL: `http://${CSCO_API_HOST}/wae`,
-  baseURL: `http://127.0.0.1:5001`,
+  // baseURL: `http://127.0.0.1:5001`,
+  baseURL: `http://127.0.0.1:8888/wae`,
   headers: {
     Authorization: "Basic YWRtaW46YWRtaW4=",
     "Content-Type": "application/yang-data+json",

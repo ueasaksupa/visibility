@@ -25,7 +25,7 @@ const CongestedLsp = (props) => {
           lspName: lsp.lspName,
           lspSrcNode: lsp.lspSrcNode,
           futurePathOption: futurePathOptionList[lsp.lspName],
-          currentActivePathOption: lsp.activeCandPathPref,
+          // currentActivePathOption: lsp.activeCandPathPref,
         };
       });
     } else {
@@ -36,7 +36,7 @@ const CongestedLsp = (props) => {
           lspName: group.lspName,
           lspSrcNode: group.lspSrcNode,
           futurePathOption: futurePathOptionList[group.lspName],
-          currentActivePathOption: group.activeCandPathPref,
+          // currentActivePathOption: group.activeCandPathPref,
         },
       ];
     }
@@ -189,9 +189,15 @@ const CongestedLsp = (props) => {
               value={futurePathOptionList[row.lspName]}
               onChange={(e) => handleOnPathOptionChange(e, row)}
             >
-              <option value="40">40</option>
-              <option value="70">70</option>
-              <option value="110">110</option>
+              <option disabled={row.activeCandPathPref > 30} value="40">
+                40
+              </option>
+              <option disabled={row.activeCandPathPref > 60} value="70">
+                70
+              </option>
+              <option disabled={row.activeCandPathPref > 100} value="110">
+                110
+              </option>
             </select>
           );
         },
@@ -331,7 +337,11 @@ const CongestedLsp = (props) => {
               </div>
             </div>
             <div className="col-md-6">
-              <button onClick={handleOptimizationDryrun} className="btn btn-primary float-right" disabled={processOptimizeDryrun}>
+              <button
+                onClick={handleOptimizationDryrun}
+                className="btn btn-sm btn-primary float-right"
+                disabled={processOptimizeDryrun}
+              >
                 {processOptimizeDryrun ? (
                   <>
                     <Spinner animation="grow" size="sm" variant="light" />
