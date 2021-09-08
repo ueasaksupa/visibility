@@ -43,10 +43,7 @@ const OptimizationHistory = (props) => {
       let payload = { ...dryrunPayloadRef.current.payload };
       payload.input["action-type"] = "commit";
       console.log("commit payload", payload);
-      await WAE_API.post(
-        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/lsps-to-reset:lsps-to-reset/run",
-        payload,
-      );
+      await WAE_API.post("/restconf/data/cisco-wae:networks/network=sr_sage/opm/lsps-to-reset:lsps-to-reset/run", payload);
       await BACKEND.delete(`/lsp-optimize/${dryrunPayloadRef.current.id}`);
       handleModalClose();
       fetchHistory();
@@ -72,7 +69,7 @@ const OptimizationHistory = (props) => {
     console.log("dryrun payload", payload);
     try {
       const response = await WAE_API.post(
-        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/lsps-to-reset:lsps-to-reset/run",
+        "/restconf/data/cisco-wae:networks/network=sr_sage/opm/lsps-to-reset:lsps-to-reset/run",
         payload,
       );
       dryrunPayloadRef.current = { payload, id: row._id };

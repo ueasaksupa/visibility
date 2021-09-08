@@ -24,7 +24,7 @@ const LspOptimize = (props) => {
   const handleOptimizationCommit = async (payload) => {
     try {
       let response = await WAE_API.post(
-        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
+        "/restconf/data/cisco-wae:networks/network=sr_sage/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
         payload,
       );
       console.log("commit resp", response.data);
@@ -54,7 +54,7 @@ const LspOptimize = (props) => {
     dispatch({ type: "updateOptimizeResult", payload: null });
     try {
       let response = await WAE_API.post(
-        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
+        "/restconf/data/cisco-wae:networks/network=sr_sage/opm/hybrid-optimizer:hybrid-optimizer/bandwidth/",
         payload,
       );
       if (response.status === 200) {
@@ -77,7 +77,7 @@ const LspOptimize = (props) => {
     let payload = { input: { "interface-utilization": congestionThresHold, "perform-opt-on": selectedSlice } };
     try {
       let response = await WAE_API.post(
-        "/restconf/data/cisco-wae:networks/network=ais_bw_slice_final/opm/sr-fetch-congestion:sr-fetch-congestion/run/",
+        "/restconf/data/cisco-wae:networks/network=sr_sage/opm/sr-fetch-congestion:sr-fetch-congestion/run/",
         payload,
       );
       if (response.status === 204) {
