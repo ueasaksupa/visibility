@@ -5,14 +5,14 @@ from pymongo import MongoClient
 from bson.objectid import ObjectId
 from datetime import datetime
 from datetime import timedelta
-import pytz
+import os
 
+mongohost = os.getenv('MONGO_HOST') or '127.0.0.1'
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
 cors = CORS(app)
-client = MongoClient('mongodb://localhost:27017',
-                     username="root", password="dbpass")
+client = MongoClient(f'mongodb://{mongohost}:27017', username="root", password="dbpass")
 notiftcationDB = client.notification
 serviceDB = client.services
 linkAlertCollection = notiftcationDB.link_alert

@@ -26,6 +26,8 @@ services:
     ports:
       - 5000:5000
     restart: on-failure
+    environment:
+      MONGO_HOST: "192.168.11.127"
 
   frontend:
     build:
